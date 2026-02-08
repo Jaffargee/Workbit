@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+      /* Use --color-* for custom colors in v4 */
+      --color-primary: #2f60bb;
+      /* For other theme extensions like maxHeight */
+      --max-height-50: 12.5rem;
+}
+
+html {
+      scroll-behavior: smooth;
+}
+body {
+      font-family: 'Inter', sans-serif;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+      display: none;
+}
+
+.scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+}
+
+.divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      border-bottom: 1px solid #ddd;
+      width: 100%;
+      position: absolute;
+}
+
+.workbit-animation{
+      animation: alternate-reverse infinite 1s wrk_bit_anim;
+}
+
+@keyframes wrk_bit_anim {
+      from {
+            width: 0;
+            left: 0;
+      } to {
+            width: 100%;
+            right: 0;
+      }
+}
