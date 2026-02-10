@@ -35,4 +35,9 @@ export interface EmailAuthSignup extends BaseSignupData {
 
 export interface GoogleOAuthSignup extends BaseSignupData {}
 
-
+export interface SupabaseError {
+      code: string,
+      details: string | null,
+      message: string,
+      hint: string,
+}
