@@ -1,95 +1,85 @@
-import { AuthError } from "@/types/auth_types";
+import { AppError, AppErrorType } from "@/types/auth_types";
 
-export class ErrorService {
-      // Map Supabase error codes to user-friendly messages
-      static mapSupabaseError(error: any): string {
+const isDevelopment = import.meta.env.DEV;
 
-            const errorCode = error?.code || error?.status;
-            const errorMessage = error?.message || '';
+const ERROR_PATTERNS = [
+      {
+            match: (error: any) => error.message?.includes('JWT'),
+            type: 'auth' as const,
+            message: 'Your session has expired. Please sign in again.',
+      },
+      {
+            match: (error: any) => error.code === 'PGRST116',
+            type: 'profile' as const,
+            message: 'User profile not found. Please complete your profile setup.',
+      },
+      {
+            match: (error: any) => error.message?.includes('User already registered'),
+            type: 'auth' as const,
+            message: 'This email is already registered. Please sign in instead.',
+      },
+      {
+            match: (error: any) => error.message?.includes('Invalid email'),
+            type: 'auth' as const,
+            message: 'Please enter a valid email address.',
+      },
+      {
+            match: (error: any) => error.message?.includes('Password should be at least'),
+            type: 'auth' as const,
+            message: 'Password must be at least 6 characters long.',
+      },
+      {
+            match: (error: any) => error.message?.includes('rate limit'),
+            type: 'auth' as const,
+            message: 'Too many attempts. Please try again in a few minutes.',
+      },
+      {
+            match: (error: any) => error.message?.includes('Invalid login credentials'),
+            type: 'auth' as const,
+            message: 'Invalid Login Credentials.',
+      },
+      {
+            match: (error: any) => error.code === 'PGRST301' || error.message?.includes('FetchError'),
+            type: 'network' as const,
+            message: 'Network error. Please check your connection and try again.',
+      },
+      {
+            match: (error: any) => error.code === 'PGRST205' || error.message?.includes('Could not find the table'),
+            type: 'network' as const,
+            message: 'An error occurred while processing your request. Please try again later.',
+      },
+] as const;
 
-            // Authentication specific errors
-            if (errorMessage.includes('User already registered')) {
-                  return 'This email is already registered. Please sign in instead.';
-            }
+class BaseErrorService {
 
-            if (errorMessage.includes('Invalid email')) {
-                  return 'Please enter a valid email address.';
-            }
+      static createErrorObject(error: AppError) {
 
-            if (errorMessage.includes('Password should be at least')) {
-                  return 'Password must be at least 6 characters long.';
-            }
-
-            if (errorMessage.includes('rate limit')) {
-                  return 'Too many attempts. Please try again in a few minutes.';
-            }
-            if (errorMessage.includes('invalid login credentials')) {
-                  return 'Invalid Login Credentials.';
-            }
-
-            // Network errors
-            if (errorCode === 'PGRST301' || errorMessage.includes('FetchError')) {
-                  return 'Network error. Please check your connection and try again.';
-            }
-
-            // Generic fallback
-            if (errorMessage) {
-                  return errorMessage;
-            }
-
-            return 'An unexpected error occurred. Please try again.';
-      }
-
-      // Log error for monitoring (would integrate with services like Sentry)
-      static logError(error: any, context: string) {
-            console.error(`[${context}]`, {
+            const errObj: AppError = {
+                  type: error.type,
                   message: error.message,
-                  code: error.code,
-                  stack: error.stack,
-                  timestamp: new Date().toISOString(),
-            });
+                  error: {
+                        name: error?.error?.name,
+                        message: error?.error?.message,
+                        code: error?.error?.code,
+                        status: error?.error?.status,
+                  },
+                  context: error.context,
+            };
 
-            // In production, send to error tracking service
-            // Sentry.captureException(error, { tags: { context } });
-      }
-}
-
-export class AuthErrorService {
-
-      static createError(type: AuthError['type'], code: string, message: string): AuthError {
-            return { type, code, message };
+            return errObj
       }
 
-      static handleSupabaseError(error: any, context: string): AuthError {
-
-            console.error(`[AuthError:${context}]`, {
-                  message: error.message,
-                  code: error.code,
-                  status: error.status,
-                  timestamp: new Date().toISOString(),
-            });
-
-            const errorCode = error?.code || error?.status;
-            const errorMessage = error?.message || '';
-
-            if (errorMessage.includes('JWT')) {
-                  return this.createError('auth', 'SESSION_EXPIRED', 'Your session has expired. Please sign in again.');
-            }
-
-            if (error.code === 'PGRST116') {
-                  return this.createError('profile', 'PROFILE_NOT_FOUND', 'User profile not found. Please complete your profile setup.');
-            }
-
-            if (error.message?.includes('fetch')) {
-                  return this.createError('network', 'NETWORK_ERROR', 'Network error. Please check your connection.', );
-            }
-
-            return this.createError('generic', error.code || error.status, 'An unexpected error occurred. Please try again.');
-
+      static createAndLog(error: AppError, context: string): AppError {
+            const errObj = this.createErrorObject(error);
+            this.logError(errObj, context);
+            return errObj
       }
 
-      static logError(error: AuthError, context: string) {
-            console.error(`[AuthProvider:${context}]`, error);
+      static logError(error: AppError, context: string) {
+
+            if (isDevelopment) {
+                  console.error(`[AuthProvider:${context}]`, error);
+            }
 
             // In production, send to monitoring service
             // Sentry.captureException(new Error(error.message), {
@@ -99,29 +89,35 @@ export class AuthErrorService {
 
 }
 
-interface SupabaseError {
-      code: string,
-      details: string | null,
-      message: string,
-      hint: string,
-}
+export class ErrorService extends BaseErrorService {
 
-export class SupabaseErrorService {
+      static handleSupabaseError(error: any, context: string): AppError {
 
-      static createError(message: string): { message: string } {
-            return { message }
-      }
+            let type: AppErrorType = 'generic';
+            let message: string = 'An unexpected error occurred. Please try again.';
 
-      static handleSupabaseError(error: SupabaseError, context?: string): { message: string } {
-            const message = error.message;
-            const code = error.code;
+            const matchedPattern = ERROR_PATTERNS.find(pattern => pattern.match(error));
 
-            if (code === 'PGRST205' || message.includes('Could not find the table')) {
-                  return { message: 'An error occurred while processing your request. Please try again later.' }
+            if (matchedPattern) {
+                  type = matchedPattern.type;
+                  message = matchedPattern.message;
             }
 
-            
+            const errObj: AppError = {
+                  type,
+                  message,
+                  error: {
+                        name: error?.name,
+                        message: error?.message,
+                        code: error?.code,
+                        status: error?.status,
+                  },
+                  context,
+            };
+
+            return this.createAndLog(errObj, context);
 
       }
 
 }
+

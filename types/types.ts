@@ -10,15 +10,19 @@ export type Status = 'ACTIVE' | 'PENDING' | 'PAUSED' | 'COMPLETED' | 'DRAFT' | '
 export type Task = 'FOLLOW' | 'LIKE' | 'RETWEET' | 'COMMENT' | 'WATCH' | 'SHARE' | 'SUBSCRIBE' | 'OTHER';
 
 export type NigerianState = 
-  | 'Abia' | 'Adamawa' | 'Akwa Ibom' | 'Anambra' | 'Bauchi' 
-  | 'Bayelsa' | 'Benue' | 'Borno' | 'Cross River' | 'Delta' 
-  | 'Ebonyi' | 'Edo' | 'Ekiti' | 'Enugu' | 'FCT' | 'Gombe' 
-  | 'Imo' | 'Jigawa' | 'Kaduna' | 'Kano' | 'Katsina' 
-  | 'Kebbi' | 'Kogi' | 'Kwara' | 'Lagos' | 'Nasarawa'
-  | 'Niger' | 'Ogun' | 'Ondo' | 'Osun' | 'Oyo' 
-  | 'Plateau' | 'Rivers' | 'Sokoto' | 'Taraba' | 'Yobe' 
-  | 'Zamfara';
+| 'Abia' | 'Adamawa' | 'Akwa Ibom' | 'Anambra' | 'Bauchi' 
+| 'Bayelsa' | 'Benue' | 'Borno' | 'Cross River' | 'Delta' 
+| 'Ebonyi' | 'Edo' | 'Ekiti' | 'Enugu' | 'FCT' | 'Gombe' 
+| 'Imo' | 'Jigawa' | 'Kaduna' | 'Kano' | 'Katsina' 
+| 'Kebbi' | 'Kogi' | 'Kwara' | 'Lagos' | 'Nasarawa'
+| 'Niger' | 'Ogun' | 'Ondo' | 'Osun' | 'Oyo' 
+| 'Plateau' | 'Rivers' | 'Sokoto' | 'Taraba' | 'Yobe' 
+| 'Zamfara';
 
+export interface AppError extends Error {
+      code?: string;
+      status?: number;
+}
 
 export interface UserProfile {
       first_name: string,
