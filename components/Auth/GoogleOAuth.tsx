@@ -6,7 +6,7 @@ const GoogleOAuth = ({ disabled }: { disabled?: boolean }) => {
             const { error } = await supabase.auth.signInWithOAuth({
                   provider: 'google',
                   options: {
-                        redirectTo: import.meta.env.VITE_APP_BASE_URL + '/dashboard'
+                        redirectTo: import.meta.env.DEV ? import.meta.env.VITE_APP_BASE_URL + '/dashboard' : window.location.origin + '/dashboard'
                   }
             })
 
