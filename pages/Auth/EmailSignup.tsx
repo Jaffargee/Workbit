@@ -9,6 +9,7 @@ import ValidationService, { toEmail } from "@/utils/ui_validation_service";
 import { ErrorService } from "@/utils/error_service";
 import AuthUIApi from "@/utils/auth_ui_api";
 import { Email } from "@/types/types";
+import { useNavigate } from "react-router-dom";
 
 
 const EmailSignup = () => {
@@ -38,6 +39,8 @@ const EmailSignup = () => {
             setErrors(prev => prev.filter(err => err.field !== field));
       }, []);
 
+      const navigate = useNavigate();
+
       // Handle form submission
       const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
             e.preventDefault();
@@ -55,13 +58,13 @@ const EmailSignup = () => {
             }
 
             // 2. Validate form inputs
-            // const validationErrors = ValidationService.validateForm(formData);
+            const validationErrors = ValidationService.validateForm(formData);
 
-            // if (validationErrors.length > 0) {
+            if (validationErrors.length > 0) {
 
-            //       setErrors(validationErrors);
-            //       return;
-            // }
+                  setErrors(validationErrors);
+                  return;
+            }
 
             // 3. Start loading state
             setIsLoading(true);
@@ -94,12 +97,11 @@ const EmailSignup = () => {
                         setIsSent(true);
                         // Clear form for security
                         setFormData({ email: '' as Email, password: '' });
+                        setTimeout(() => navigate('/auth/login'), 2000)
                   }
 
             } catch (error: any) {
                   // 7. Handle unexpected errors
-                  console.error('Unexpected error during signup:', error);
-
                   setErrors([{ 
                         field: 'generic', 
                         message: 'An unexpected error occurred. Please try again later.' 
@@ -156,8 +158,8 @@ const EmailSignup = () => {
                                           placeholder="name@example.com"
                                           required
                                           disabled={isLoading}
-                                    //   autoComplete="email"
-                                          onChange={(e) => handleInputChange('email', toEmail(e.target.value))}
+                                          autoComplete="email"
+                                          onChange={(e) => handleInputChange('email', e.target.value)}
                                           aria-invalid={!!AuthUIApi.getFieldError(errors, 'email')}
                                           aria-describedby={AuthUIApi.getFieldError(errors, 'email') ? 'email-error' : undefined}
                                     />
@@ -246,8 +248,8 @@ const EmailSignup = () => {
                   </div>
 
                   {/* Email Confirmation Dialog */}
-                  {/* {isSent && <ConfirmEmailDialog />} */}
-                  {/* {isSent && <ConfirmEmailDialog email={formData.email} data={signupData} />} */}
+                  {/* {isSent && <ConfirmEmailDialog />}
+                  {isSent && <ConfirmEmailDialog email={formData.email} data={signupData} />} */}
             </div>
       );
 };

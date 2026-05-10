@@ -13,16 +13,17 @@ type AuthSelectListProps = React.InputHTMLAttributes<HTMLInputElement> & {
       required?: boolean,
       onChange?: (event: any) => any,
       disabled?: boolean,
-      rest?: React.InputHTMLAttributes<HTMLInputElement>
+      rest?: React.InputHTMLAttributes<HTMLInputElement>,
+      className?: string;
 }
 
-const AuthSelectList = ({ value, options = NigerianStates, icon = <LocateFixed size={16} />, disabled, label, required, onChange, rest }: AuthSelectListProps ) => {
+const AuthSelectList = ({ value, options = NigerianStates, icon = <LocateFixed size={16} />, disabled, label, required, onChange, className, rest }: AuthSelectListProps ) => {
       return (
             <div className="space-y-2 w-full">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-2 px-1">
                         {icon && icon} {label}
                   </label>
-                  <input disabled={disabled} list='states' onChange={onChange} value={value} placeholder={label} name='state' id='state' required={required} {...rest} className="w-full appearance-none bg-slate-50 border border-slate-200 px-5 py-3 rounded-2xl focus:outline-none focus:border-blue-500 transition-all text-md mb-0" />
+                  <input disabled={disabled} list='states' onChange={onChange} value={value} placeholder={label} name='state' id='state' required={required} {...rest} className={`w-full appearance-none bg-slate-50 border border-slate-200 px-5 py-2 rounded-md focus:outline-none focus:border-blue-500 transition-all text-md mb-0 ${className}`} />
 
                   <datalist id='states'>
                         {

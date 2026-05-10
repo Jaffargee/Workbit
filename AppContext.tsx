@@ -1,11 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Job, Submission, Transaction } from './types';
+import { User, Job, Submission, Transaction, Jobs } from '@/types/types';
 import { MOCK_JOBS } from './constants';
 
 interface AppState {
   user: User | null;
-  jobs: Job[];
+  jobs: Jobs[];
   submissions: Submission[];
   transactions: Transaction[];
   loading: boolean;
@@ -24,7 +24,7 @@ const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
+  const [jobs, setJobs] = useState<Jobs[]>(MOCK_JOBS);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);

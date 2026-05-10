@@ -2,7 +2,7 @@ import { SupabaseUser } from "@/types/supabase_types";
 import { Email, Gender, NigerianState, UserProfile } from "./types";
 import { AuthError as AError } from "@supabase/supabase-js";
 
-export type Field = 'email' | 'password' | 'generic' | 'state' | 'phone' | 'first_name' | 'last_name' | 'username' | 'gender' | 'user_type';
+export type Field = 'email' | 'password' | 'generic' | 'state' | 'phone' | 'first_name' | 'last_name' | 'username' | 'gender' | 'user_type' | 'general';
 
 export interface ValidationError {
       field: Field;
@@ -64,5 +64,6 @@ export interface AuthContextType {
       loading: boolean;
       error: AppError | null;
       isAuthenticated: boolean;
+      refreshUserProfile: () => Promise<void>;
       signOut: () => Promise<void>;
 }

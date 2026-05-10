@@ -1,0 +1,121 @@
+Schema Identity.User {
+      id: UUID PRI IDENTITY
+      email: str
+      created_at: timestamptz
+}
+
+Schema User.Profile {
+      id: UUID PRI
+      user_id: UUID REF Identity.User.id
+      first_name: str
+      last_name: str
+      state: NigerianState
+      gender: Gender
+      date_of_birth: date?
+      metadata: JSONB?
+      created_at: timestamptz
+      updated_at: timestamptz
+}
+
+Schema User.Contact {
+      id: UUID PRI
+      user_id: UUID REF Identity.User.id
+      phone: str
+}
+
+Schema User.Referrals {
+      id: UUID PRI
+      user_id: UUID REF Identity.User.id
+      ref_code: str
+      referred_by: UUID?
+}
+
+Schema Platforms {
+      id: UUID PRI
+      name: str
+      owner: str
+      domain: str
+      base_url: str
+      logo_url: str
+      is_active: bool
+      created_at: timestamptz?
+}
+
+Schema Jobs {
+      id: UUID PRI
+      user_id: UUID REF Identity.User.id
+      platform_id: UUID REF Platforms.id
+
+      job_type: Type[LIKE, FOLLOW, COMMENT, RETWEET,]
+      status: JobStatus
+
+      target_url: URL
+      payout_amount: Decimal
+      auto_approve: Bool
+      requires_screenshot: Bool
+
+      title: str
+      description: str
+      payout_currency: str
+
+      views_count: int
+      total_slots: int
+      filled_slots: int
+      applications_count: int
+
+      posted_at: timestamptz
+      completed_at: timestamptz
+      expires_at: timestamptz
+
+}
+
+Schema JobApplication {
+      id: UUID PRI
+      job_id: UUID REF Jobs.id
+      worker_id: UUID REF Identity.User.id
+
+      status: Type[APPLIED, WORKING, SUBMITTED, APPROVED, REJECTED, PAID]
+
+      applied_at: timestamptz
+      updated_at: timestamptz
+}
+
+Schema JobProof {
+      id: UUID PRI
+      application_id: UUID REF JobApplication.id
+
+      proof_type: Type[SCREENSHOT, LINK, USERNAME, COMMENT_TEXT]
+      worker_social_url: str
+
+      before_proof_url: str
+      after_proof_url: str
+
+      notes: text
+
+      submitted_at: timestamptz
+}
+
+Schema JobVerification {
+      id: UUID PRI
+      application_id: UUID REF JobApplication.id
+      verified_by: UUID REF Identity.User.id
+
+      recheck_status: Type[ACTIVE, INACTIVE]
+      is_verified: Bool
+
+      verified_at: timestamptz
+      last_recheck_at: timestamptz
+}
+
+Schema JobPayment {
+      id: UUID PRI
+      application_id: UUID REF JobApplication.id
+
+      amount: Decimal
+      current: Type[NGN, ₦]
+
+      payment_status: Type[PENDING, PAID, PROCESSING, FAILED]
+      payment_reference: str
+
+      paid_at: timestamptz
+}

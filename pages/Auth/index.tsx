@@ -5,6 +5,7 @@ import EmailLogin from "./EmailLogin";
 import { Logo } from "@/components/Logo";
 import AuthInput from "@/components/Auth/AuthInput";
 import { Hash } from "lucide-react";
+import { Profile } from "./Profile";
 
 const Auth: React.FC<{ type: "login" | "register" | "profile" }> = ({ type }) => {
 
@@ -25,7 +26,7 @@ const Auth: React.FC<{ type: "login" | "register" | "profile" }> = ({ type }) =>
                         </div>
 
                         {
-                              type === 'login' ? <EmailLogin /> : <EmailSignup />
+                              type === 'login' ? <EmailLogin /> : type === 'profile' ? <Profile /> : <EmailSignup />
                         }
 
                         {
@@ -100,5 +101,6 @@ const ConfirmReferralDialog = () => {
             </div>
       )
 }
+
 
 export default Auth;

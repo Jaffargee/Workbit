@@ -9,6 +9,7 @@ import { ErrorService } from "@/utils/error_service";
 import { NetworkService } from "@/utils/network_service";
 import { AlertCircle, ArrowRight, Loader2, LockIcon, User } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 
 const EmailLogin = () => {
@@ -16,6 +17,8 @@ const EmailLogin = () => {
       const [formData, setFormData] = useState<AuthCredentials>({ email: "" as Email, password: "" });
       const [errors, setErrors] = useState<ValidationError[]>([]);
       const [isLoading, setIsLoading] = useState<boolean>(false);
+
+      const navigate = useNavigate();
 
       const handleSigning = async (e: any) => {
             e.preventDefault();
@@ -32,12 +35,9 @@ const EmailLogin = () => {
 
             try {
 
-                  console.log(formData);
-
                   const { data, error } = await supabase.auth.signInWithPassword({ email: formData.email, password: formData.password });
 
                   if (error) {
-                        // console.error('Supabase Login Error:', error);
                         const userFriendlyError = ErrorService.handleSupabaseError(error, 'handleSigning');
                         // Temporary: Show raw error message if available, for debugging
                         const debugMessage = error.message || (error as any).error_description || JSON.stringify(error);
@@ -47,11 +47,10 @@ const EmailLogin = () => {
 
                   if (data.user) {
                         setFormData({ email: '' as Email, password: '' });
+                        navigate('/auth/profile');
                   }
 
             } catch (error) {
-                  console.error('Unexpected error during signup:', error);
-
                   setErrors([{
                         field: 'generic',
                         message: 'An unexpected error occurred. Please try again later.'
@@ -80,13 +79,13 @@ const EmailLogin = () => {
                   <form onSubmit={handleSigning} className="bg-white rounded-[2.5rem] border-none border-slate-100 space-y-6">
 
                         <div className="flex flex-col item-center-w-full relative space-y-6 md:gap-2">
-                              <AuthInput type="email" value={formData.email} id="email" name="email" icon={<User size={16} />} label="Email address" placeholder="Your account username" required
+                              <AuthInput type="email" value={formData.email} id="email" name="email" autoComplete="true" icon={<User size={16} />} label="Email address" placeholder="Your account username" required
                                     onChange={(e) =>
                                           setFormData({ ...formData, email: e.target.value as Email })
                                     }
                               />
 
-                              <AuthPasswdInput value={formData.password} id="password" name="password" icon={<LockIcon size={16} />} label="Password" placeholder="Your account password" required
+                              <AuthPasswdInput value={formData.password} id="password" name="password" autoComplete="true" icon={<LockIcon size={16} />} label="Password" placeholder="Your account password" required
                                     onChange={(e) =>
                                           setFormData({ ...formData, password: e.target.value })
                                     }

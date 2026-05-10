@@ -1,7 +1,7 @@
 import { EyeIcon, EyeOff } from 'lucide-react'
 import React, { useState } from 'react'
 
-type AuthInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+type WInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
       name: string,
       icon?: React.ReactNode,
       label: string,
@@ -11,7 +11,7 @@ type AuthInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 const EYE_ICON_SIZE = 16;
 const EYE_ICON_COLOR = '#494949ff'
 
-const AuthInput = ({ name, icon, label, className, ...rest }: AuthInputProps) => {
+const WInput = ({ name, icon, label, className, ...rest }: WInputProps) => {
       return (
             <div className="space-y-2 w-full">
                   <label htmlFor={name} className="text-sm font-bold text-slate-700 flex items-center gap-2 px-1">
@@ -19,13 +19,15 @@ const AuthInput = ({ name, icon, label, className, ...rest }: AuthInputProps) =>
                   </label>
                   <input
                         className={`w-full appearance-none bg-slate-50 border border-slate-200 px-5 py-2 rounded-md focus:outline-none focus:border-blue-500 transition-all text-md ${className}`}
+                        id={name}
+                        name={name}
                         {...rest}
                   />
             </div>
       )
 }
 
-export const AuthPasswdInput = ({ name, icon, label, ...rest }: AuthInputProps) => {
+export const WPasswdInput = ({ name, icon, label, ...rest }: WInputProps) => {
 
       const [isHide, setHide] = useState<boolean>(true);
 
@@ -37,6 +39,8 @@ export const AuthPasswdInput = ({ name, icon, label, ...rest }: AuthInputProps) 
                   <div className="flex flex-row items-center w-full w-full relative overflow-hidden bg-slate-50 border border-slate-200 rounded-2xl focus-within:outline-none focus-within:border-blue-500 transition-all">
                         <input
                               type={isHide ? 'password' : 'text'}
+                              id={name}
+                              name={name}
                               {...rest}
                               className="relative flex-1 appearance-none bg-[transparent] px-5 py-3 outline-none transition-all text-md"
                         />
@@ -52,4 +56,4 @@ export const AuthPasswdInput = ({ name, icon, label, ...rest }: AuthInputProps) 
       )
 }
 
-export default AuthInput;
+export default WInput;

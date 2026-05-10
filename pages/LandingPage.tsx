@@ -11,6 +11,7 @@ import {
       BarChart3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/authentication";
 
 
 const LandingPage: React.FC = () => {
@@ -380,7 +381,7 @@ const LandingPage: React.FC = () => {
 
 const AuthTypeLoggedInORNot: React.FC = () => {
 
-      const { isAuthenticated } = { isAuthenticated: false }; // Replace with actual auth logic
+      const { isAuthenticated } = useAuth(); // Replace with actual auth logic
 
       return (
             isAuthenticated ? (
