@@ -42,7 +42,7 @@ interface PostJobForm {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const PostJob: React.FC = () => {
-      const { user: usr } = useAuth();
+      const { profile } = useAuth();
       const [platforms, setPlatforms] = useState<Platform_[]>([]);
       const [platformError, setPlatformError] = useState('');
       const [loading, setLoading] = useState(false);
@@ -70,51 +70,49 @@ const PostJob: React.FC = () => {
       const grandTotal  = totalCost + platformFee;
 
       // ── Load platforms ─────────────────────────────────────────────────────────
-
       useEffect(() => {
-      const fetchPlatforms = async () => {
-            const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+            const fetchPlatforms = async () => {
+                  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-            if (!NetworkService.isOnline()) {
-                  setPlatformError('No internet connection.');
-                  await delay(1500);
-                  continue;
-            }
-
-            const { data, error } = await supabase
-                  .from('platforms')
-                  .select('*')
-                  .eq('is_active', true);
-
-            if (error) {
-                  if (attempt === MAX_RETRIES) {
-                  setPlatformError('Could not load platforms. Please refresh the page.');
+                  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                  try {
+                  if (!NetworkService.isOnline()) {
+                        setPlatformError('No internet connection.');
+                        await delay(1500);
+                        continue;
                   }
-                  await delay(1000 * attempt);
-                  continue;
-            }
 
-            if (data?.length) {
-                  setPlatforms(data as Platform_[]);
-                  setForm(prev => ({ ...prev, platform_id: data[0].id }));
-            }
+                  const { data, error } = await supabase
+                        .from('platforms')
+                        .select('*')
+                        .eq('is_active', true);
 
-            return; // success
-            } catch {
-            if (attempt === MAX_RETRIES) {
-                  setPlatformError('Could not load platforms. Please refresh the page.');
-            }
-            }
-            }
-      };
+                  if (error) {
+                        if (attempt === MAX_RETRIES) {
+                        setPlatformError('Could not load platforms. Please refresh the page.');
+                        }
+                        await delay(1000 * attempt);
+                        continue;
+                  }
 
-      fetchPlatforms();
+                  if (data?.length) {
+                        setPlatforms(data as Platform_[]);
+                        setForm(prev => ({ ...prev, platform_id: data[0].id }));
+                  }
+
+                  return; // success
+                  } catch {
+                  if (attempt === MAX_RETRIES) {
+                        setPlatformError('Could not load platforms. Please refresh the page.');
+                  }
+                  }
+                  }
+            };
+
+            fetchPlatforms();
       }, []);
 
       // ── Submit ─────────────────────────────────────────────────────────────────
-
       const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setSubmitError('');
@@ -135,29 +133,30 @@ const PostJob: React.FC = () => {
             setLoading(true);
 
             try {
-                  // Uses the post_job_with_funding RPC — creates job + funding atomically
-                  const { data, error } = await supabase.rpc('create_job_with_funding', {
-                        p_platform_id:           form.platform_id,
-                        p_job_type:              form.job_type,
-                        p_target_url:            form.target_url.trim(),
-                        p_payout_amount:         form.payout_amount,
-                        p_payout_currency:       form.payout_currency,
-                        p_auto_approve:          form.auto_approve,
-                        p_requires_screenshot:   form.requires_screenshot,
-                        p_requires_before_proof: form.requires_before_proof,
-                        p_proof_instructions:    form.proof_instructions.trim(),
-                        p_title:                 form.title.trim(),
-                        p_description:           form.description.trim(),
-                        p_total_slots:           form.total_slots,
-                        p_expires_at:            addDays(form.expires_in_days),
-                  });
+                  // Correct way to insert directly into the table rows
+                  const { data, error } = await supabase.from('jobs').insert({
+                        user_id:               profile?.user_id, // Required by your table schema
+                        platform_id:           form.platform_id,
+                        job_type:              form.job_type,
+                        target_url:            form.target_url.trim(),
+                        payout_amount:         form.payout_amount,
+                        payout_currency:       form.payout_currency,
+                        auto_approve:          form.auto_approve,
+                        requires_screenshot:   form.requires_screenshot,
+                        requires_before_proof: form.requires_before_proof,
+                        proof_instructions:    form.proof_instructions ? form.proof_instructions.trim() : null,
+                        title:                 form.title.trim(),
+                        description:           form.description.trim(),
+                        total_slots:           form.total_slots,
+                        expires_at:            addDays(form.expires_in_days),
+                  }).select().maybeSingle();
 
                   if (error) {
                         setSubmitError(error.message);
                         return;
                   }
 
-                  if (data?.success) {
+                  if (data.success) {
                         setSuccess({ job_id: data.job_id, total_cost: data.escrow_amount + data.platform_fee });
                   }
 
@@ -169,12 +168,12 @@ const PostJob: React.FC = () => {
       };
 
       const resetForm = () => {
-      setSuccess(null);
-      setForm(prev => ({
-            ...prev,
-            title: '', description: '', target_url: '',
-            proof_instructions: '', total_slots: 10, payout_amount: 150,
-      }));
+            setSuccess(null);
+            setForm(prev => ({
+                  ...prev,
+                  title: '', description: '', target_url: '',
+                  proof_instructions: '', total_slots: 10, payout_amount: 150,
+            }));
       };
 
       if (!NetworkService.isOnline()) return <NetworkError />;
@@ -184,7 +183,7 @@ const PostJob: React.FC = () => {
 
                   {/* ── Form ─────────────────────────────────────────────────────────── */}
                   <div className="lg:col-span-3">
-                        <div className="bg-white p-4 md:p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <div className="bg-white p-4 md:p-6 rounded-4xl border border-slate-100">
 
                               {success && (
                                     <SuccessOverlay
@@ -301,7 +300,7 @@ const PostJob: React.FC = () => {
 
                                     {/* Description */}
                                     <div className="space-y-2">
-                                          <span className="text-sm font-bold text-slate-700">Task Description</span>
+                                          <div className="text-sm font-bold text-slate-700">Task Description</div>
                                           <textarea
                                                 required
                                                 placeholder="List steps clearly: 1. Go to... 2. Click Follow... 3. Screenshot…"
@@ -313,7 +312,7 @@ const PostJob: React.FC = () => {
 
                                     {/* Proof Instructions */}
                                     <div className="space-y-2">
-                                          <span className="text-sm font-bold text-slate-700">Proof Requirements</span>
+                                          <div className="text-sm font-bold text-slate-700">Proof Requirements</div>
                                           <textarea
                                                 placeholder="e.g., Screenshot showing you've followed the account + your username"
                                                 className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-blue-500 min-h-[80px] text-sm"
@@ -347,11 +346,11 @@ const PostJob: React.FC = () => {
                                           />
                                     </div>
 
-                                    <button type="submit" disabled={loading || platforms.length === 0} className="w-full cursor-pointer bg-blue-600 text-white py-4 rounded-full font-bold text-base hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" >
+                                    <button type="submit" disabled={loading || platforms.length === 0} className="w-full cursor-pointer bg-blue-600 text-white py-3 rounded-full text-base hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" >
                                           {loading ? (
                                                 <><Loader2 size={20} className="animate-spin" /> Posting Job…</>
                                           ) : (
-                                                'Post Job & Launch Campaign'
+                                                'Create Job'
                                           )}
                                     </button>
 
@@ -362,7 +361,7 @@ const PostJob: React.FC = () => {
 
                   {/* ── Cost Summary ─────────────────────────────────────────────────── */}
                   <div className="lg:col-span-2 space-y-4">
-                        <div className="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg relative overflow-hidden sticky top-2">
+                        <div className="bg-slate-900 text-white p-6 rounded-4xl shadow-lg relative overflow-hidden sticky top-2">
                               <div className="absolute top-0 right-0 p-4 opacity-5">
                                     <Calculator size={120} />
                               </div>
@@ -384,6 +383,18 @@ const PostJob: React.FC = () => {
                                     <InfoStep n={2} text="Funds are held in escrow until each proof is approved." />
                                     <InfoStep n={3} text="Unused slots are refunded if the campaign ends early." />
                               </div>
+
+                              {/* Launch/Fund JOB button. */}
+                              {/* <div className="flex flex-row w-full relative mt-4 items-center">
+                                    <div className="flex h-full w-full relative">
+                                          <button onClick={handleJobFunding} className="cursor-pointer w-full relative border border-blue-600 hover:bg-blue-600 transition-all bg-blue-700 outline-none rounded-full">
+                                                <div className="h-full w-full relative items-center justify-center px-4 py-2">
+                                                      <span className="text-slate-200 text-md">Fund & Launch Campaign</span>
+                                                </div>
+                                          </button>
+                                    </div>
+                              </div> */}
+
                         </div>
                   </div>
 

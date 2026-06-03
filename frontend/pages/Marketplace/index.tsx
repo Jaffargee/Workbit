@@ -25,6 +25,7 @@ const Marketplace: React.FC = () => {
       const [selectedJob, setSelectedJob] = useState<any | null>(null);
       const [proof, setProof] = useState("");
       const [submitted, setSubmitted] = useState(false);
+      const [loading, setLoading] = useState<boolean>(false);
 
       const [jobs, setJobs] = useState<Job[]>([]);
 
@@ -36,7 +37,6 @@ const Marketplace: React.FC = () => {
             return matchesPlatform && matchesSearch;
       });
 
-      const navigate = useNavigate();
 
       const handleSubmitProof = (e: React.FormEvent) => {
             e.preventDefault();
@@ -53,13 +53,19 @@ const Marketplace: React.FC = () => {
       useEffect(() => {
 
             async function fetchJobs() {
-                  const { data, error } = await supabase.from('jobs').select('*, platforms (*)');
-                  if (error) {
-                        alert('Error');
+                  setLoading(true);
+                  try {
+                        const { data, error } = await supabase.from('jobs').select('*, platforms (*)');
+                        if (error) {
+                              alert('Error');
+                              console.log(error);
+                        }
+                        setJobs(data as any);
+                  } catch (error) {
                         console.log(error);
+                  } finally {
+                        setLoading(false);
                   }
-
-                  setJobs(data as any);
             }
 
             fetchJobs();
@@ -93,22 +99,26 @@ const Marketplace: React.FC = () => {
                                     All Platforms
                               </button>
                               {PLATFORMS.map((p) => (
-                                    <button
-                                          key={p.name}
-                                          onClick={() => setFilter(p.name)}
-                                          className={`px-6 py-2.5 rounded-xl font-semibold transition-all shrink-0 flex items-center gap-2 ${filter === p.name ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-200"}`}
-                                    >
-                                          {p.icon} {p.name}
-                                    </button>
+                                    <PlatformPill icon={p.icon} label={p.name} active={filter === p.name} onClick={() => setFilter(p.name)} />
                               ))}
                         </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {filteredJobs.map((job) => (
-                              <JobCard2 job={job} onClick={() => {}} />
-                        ))}
-                  </div>
+                  {
+                        loading ? ( 
+                              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {Array.from({ length: 6 }).map((_, i) => (
+                                          <SkeletonCard key={i} />
+                                    ))}
+                              </div>
+                         ) : (
+                              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {filteredJobs.map((job) => (
+                                          <JobCard job={job} onClick={() => {}} />
+                                    ))}
+                              </div>
+                        )
+                  }
 
                   {/* Modal for Job Details */}
                   <Modal selectedJob={selectedJob} user={user} submitted={submitted} setSelectedJob={setSelectedJob} subscribe={subscribe} setProof={setProof} handleSubmitProof={handleSubmitProof} proof={proof} />
@@ -281,68 +291,7 @@ const Modal = ({ selectedJob, user, submitted, setSelectedJob, subscribe, setPro
       );
 }
 
-const JobCard = ({ job }: { job: Job } ) => {
-      const navigate = useNavigate();
-
-      return (
-            <div key={job.id} className="bg-white cursor-pointer rounded-md border border-slate-200 p-6 flex flex-col hover:shadow-xl hover:shadow-blue-100 transition-all group" >
-                  <div className="flex justify-between items-start mb-6">
-                        <div className={`p-3 max-h-14 max-w-14 rounded-full text-white ${PLATFORMS.find((p) => p.name.includes(job.platforms.name))?.color} overflow-hidden`}>
-                              <img src={job.platforms.logo_url} className="h-full w-full" />
-                        </div>
-                        <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase">
-                              {job.platforms.name}
-                        </div>
-                  </div>
-
-                  <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
-                        {job.title}
-                  </h3>
-
-                  <p className="text-slate-500 text-sm line-clamp-2 mb-6">
-                        {job.description}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-
-                  <div className="space-y-1">
-                        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                              Payout
-                        </p>
-                        <p className="text-lg font-black text-slate-900">
-                              ₦{job.payout_amount}
-                        </p>
-                  </div>
-
-                  <div className="space-y-1 text-right">
-                        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                              Slots
-                        </p>
-                        <p className="text-lg font-black text-slate-900">
-                              {job.total_slots}
-                        </p>
-                  </div>
-                  </div>
-
-                  <button onClick={() => {
-                        navigate(`/marketplace/${job.id}`)
-                  }} className="mt-auto w-full bg-blue-600 text-white py-3 cursor-pointer rounded-full font-bold hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
-                        <div className="flex flex-row items-center justify-center w-full relative flex-row-reverse gap-2">
-                              <div className="flex h-full relative flex-col items-center justify-center">
-                                    <ArrowRight size={18} />
-                              </div>
-                              <div className="flex flex-row">
-                                    <span>Perform Task</span>
-                              </div>
-                        </div>
-                  </button>
-
-            </div>
-      )
-}
-
-
-const JobCard2 = ({ job, onClick }: { job: Job, onClick: () => void }) => {
+const JobCard = ({ job, onClick }: { job: Job, onClick: () => void }) => {
       const PLATFORMS = [
             { id: "p1", name: "TikTok", color: "from-black via-slate-900 to-black", text: "text-rose-500", bg: "bg-rose-50", border: "border-rose-100", logo_url: "https://placehold.co/100x100/000000/ffffff?text=TikTok" },
             { id: "p2", name: "Instagram", color: "from-purple-600 via-pink-500 to-amber-500", text: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100", logo_url: "https://placehold.co/100x100/E1306C/ffffff?text=Insta" },
@@ -506,5 +455,54 @@ const JobCard2 = ({ job, onClick }: { job: Job, onClick: () => void }) => {
       );
 };
 
-
 export default Marketplace;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const PlatformPill = ({ label, icon, active, onClick }: { label: string; icon?: React.ReactNode; active: boolean; onClick: () => void; }) => (
+      <button
+            onClick={onClick}
+            className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 flex items-center gap-2
+                  ${active ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300'}`}
+      >
+            {icon} {label}
+      </button>
+);
+
+const SkeletonCard = () => (
+      <div className="bg-white rounded-[2rem] border border-slate-100 p-6 space-y-4 animate-pulse">
+            <div className="flex justify-between">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl" />
+                  <div className="w-16 h-6 bg-slate-100 rounded-full" />
+            </div>
+            <div className="h-5 bg-slate-100 rounded-lg w-3/4" />
+            <div className="h-3 bg-slate-100 rounded w-full" />
+            <div className="h-3 bg-slate-100 rounded w-2/3" />
+            <div className="grid grid-cols-2 gap-3">
+                  <div className="h-16 bg-slate-100 rounded-xl" />
+                  <div className="h-16 bg-slate-100 rounded-xl" />
+            </div>
+            <div className="h-10 bg-slate-100 rounded-full" />
+      </div>
+);
+
+const EmptyState = ({
+  searchTerm, platformFilter,
+}: {
+  searchTerm: string; platformFilter: string;
+}) => (
+  <div className="flex flex-col items-center justify-center py-20 space-y-3">
+    <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center">
+      <Search size={24} className="text-slate-400" />
+    </div>
+    <h3 className="text-lg font-bold text-slate-800">No jobs found</h3>
+    <p className="text-sm text-slate-400 text-center max-w-xs">
+      {searchTerm
+        ? `No jobs match "${searchTerm}".`
+        : platformFilter !== 'All'
+          ? `No active jobs for ${platformFilter} right now.`
+          : 'No active jobs available at the moment. Check back soon.'
+      }
+    </p>
+  </div>
+);
+

@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS job_disputes (
 -- SECTION 9: WALLET & PAYMENTS
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS wallets (
+CREATE TABLE IF NOT EXISTS wallet (
       id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       user_id     UUID NOT NULL UNIQUE REFERENCES identity_users(id) ON DELETE CASCADE,
       balance     NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
@@ -374,7 +374,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 
 CREATE TABLE IF NOT EXISTS wallet_transactions (
       id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-      wallet_id       UUID NOT NULL REFERENCES wallets(id),
+      wallet_id       UUID NOT NULL REFERENCES wallet(id),
       type            wallet_tx_type_enum NOT NULL,
       amount          NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
       balance_before  NUMERIC(12, 2) NOT NULL,
@@ -560,7 +560,7 @@ CREATE OR REPLACE FUNCTION fn_credit_wallet_on_payment()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
       v_worker_id UUID;
-      v_wallet    wallets%ROWTYPE;
+      v_wallet    wallet%ROWTYPE;
       v_tx_id     UUID;
 BEGIN
       -- Only act when status transitions to PAID
@@ -571,7 +571,7 @@ BEGIN
             FROM job_applications ja
             WHERE ja.id = NEW.application_id;
 
-            SELECT * INTO v_wallet FROM wallets WHERE user_id = v_worker_id FOR UPDATE;
+            SELECT * INTO v_wallet FROM wallet WHERE user_id = v_worker_id FOR UPDATE;
 
             IF v_wallet.is_frozen THEN
                   RAISE EXCEPTION 'Wallet is frozen for user %', v_worker_id;
@@ -587,7 +587,7 @@ BEGIN
                   'JOB_PAYMENT', NEW.payment_reference
             ) RETURNING id INTO v_tx_id;
 
-            UPDATE wallets
+            UPDATE wallet
             SET balance = balance + NEW.amount
             WHERE id = v_wallet.id;
 
@@ -608,7 +608,7 @@ CREATE TRIGGER trg_credit_wallet_on_payment
 CREATE OR REPLACE FUNCTION fn_create_wallet_for_user()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-      INSERT INTO wallets (user_id) VALUES (NEW.id)
+      INSERT INTO wallet (user_id) VALUES (NEW.id)
       ON CONFLICT (user_id) DO NOTHING;
       RETURN NEW;
 END;
@@ -647,7 +647,7 @@ ALTER TABLE user_contacts          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_bank_accounts     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_referrals         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE referral_rewards       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wallets                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_transactions    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE withdrawal_requests    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_applications       ENABLE ROW LEVEL SECURITY;
@@ -662,7 +662,7 @@ CREATE POLICY "own profile" ON user_profiles
     FOR ALL USING (user_id = auth.uid());
 
 -- Users see only their own wallet
-CREATE POLICY "own wallet" ON wallets
+CREATE POLICY "own wallet" ON wallet
     FOR ALL USING (user_id = auth.uid());
 
 -- Workers see only their own applications
@@ -750,7 +750,7 @@ CREATE TYPE deposit_status_enum AS ENUM (
 CREATE TABLE IF NOT EXISTS wallet_deposits (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id             UUID NOT NULL REFERENCES identity_users(id),
-    wallet_id           UUID NOT NULL REFERENCES wallets(id),
+    wallet_id           UUID NOT NULL REFERENCES wallet(id),
     amount              NUMERIC(12,2) NOT NULL CHECK (amount > 0),
     currency            TEXT NOT NULL DEFAULT 'NGN',
     status              deposit_status_enum NOT NULL DEFAULT 'PENDING',
@@ -1013,7 +1013,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_poster_id     UUID;
-    v_wallet        wallets%ROWTYPE;
+    v_wallet        wallet%ROWTYPE;
     v_total_cost    NUMERIC;
     v_platform_fee  NUMERIC;
     v_escrow_amount NUMERIC;
@@ -1034,7 +1034,7 @@ BEGIN
     -- ── Lock poster wallet and check balance ───────────────────────────────
     -- We lock with FOR UPDATE to prevent concurrent deductions racing each other
     SELECT * INTO v_wallet
-    FROM wallets
+    FROM wallet
     WHERE user_id = v_poster_id
     FOR UPDATE;
 
@@ -1085,7 +1085,7 @@ BEGIN
     ) RETURNING id INTO v_wallet_tx_id;
 
     -- Update cached wallet balance
-    UPDATE wallets
+    UPDATE wallet
     SET balance = balance - (v_escrow_amount + v_platform_fee)
     WHERE id = v_wallet.id;
 
@@ -1240,7 +1240,7 @@ AS $$
 DECLARE
     v_app           job_applications%ROWTYPE;
     v_job           jobs%ROWTYPE;
-    v_worker_wallet wallets%ROWTYPE;
+    v_worker_wallet wallet%ROWTYPE;
     v_funding       job_funding%ROWTYPE;
     v_wallet_tx_id  UUID;
 BEGIN
@@ -1268,7 +1268,7 @@ BEGIN
 
     -- Lock worker wallet
     SELECT * INTO v_worker_wallet
-    FROM wallets WHERE user_id = v_app.worker_id FOR UPDATE;
+    FROM wallet WHERE user_id = v_app.worker_id FOR UPDATE;
 
     IF v_worker_wallet.is_frozen THEN
         RAISE EXCEPTION 'Worker wallet is frozen. Cannot release funds.';
@@ -1288,7 +1288,7 @@ BEGIN
         format('Payment for job: %s', v_job.title)
     ) RETURNING id INTO v_wallet_tx_id;
 
-    UPDATE wallets
+    UPDATE wallet
     SET balance = balance + v_job.payout_amount
     WHERE id = v_worker_wallet.id;
 
@@ -1348,7 +1348,7 @@ DECLARE
     v_funding       job_funding%ROWTYPE;
     v_live          v_job_funding_live%ROWTYPE;
     v_refund_amount NUMERIC;
-    v_poster_wallet wallets%ROWTYPE;
+    v_poster_wallet wallet%ROWTYPE;
     v_wallet_tx_id  UUID;
 BEGIN
     v_caller_id := auth.uid();
@@ -1384,7 +1384,7 @@ BEGIN
 
     -- Lock poster wallet
     SELECT * INTO v_poster_wallet
-    FROM wallets WHERE user_id = v_job.user_id FOR UPDATE;
+    FROM wallet WHERE user_id = v_job.user_id FOR UPDATE;
 
     -- Refund available amount to poster wallet
     INSERT INTO wallet_transactions (
@@ -1401,7 +1401,7 @@ BEGIN
                v_refund_amount / v_job.payout_amount)
     ) RETURNING id INTO v_wallet_tx_id;
 
-    UPDATE wallets
+    UPDATE wallet
     SET balance = balance + v_refund_amount
     WHERE id = v_poster_wallet.id;
 
@@ -1456,7 +1456,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_deposit       wallet_deposits%ROWTYPE;
-    v_wallet        wallets%ROWTYPE;
+    v_wallet        wallet%ROWTYPE;
     v_wallet_tx_id  UUID;
 BEGIN
     -- Idempotency: check reference hasn't already been confirmed
@@ -1489,7 +1489,7 @@ BEGIN
     END IF;
 
     -- Lock wallet
-    SELECT * INTO v_wallet FROM wallets WHERE id = v_deposit.wallet_id FOR UPDATE;
+    SELECT * INTO v_wallet FROM wallet WHERE id = v_deposit.wallet_id FOR UPDATE;
 
     -- Credit the wallet
     INSERT INTO wallet_transactions (
@@ -1505,7 +1505,7 @@ BEGIN
         'Paystack deposit confirmed'
     ) RETURNING id INTO v_wallet_tx_id;
 
-    UPDATE wallets
+    UPDATE wallet
     SET balance = balance + p_amount
     WHERE id = v_wallet.id;
 
@@ -1536,3 +1536,1117 @@ $$;
 -- SELECT job_id, cached_available, available_live, cache_drifted
 -- FROM v_job_funding_live
 -- WHERE cache_drifted = TRUE;
+
+
+
+
+
+
+
+
+
+
+
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+-- ============================================================================================================
+
+
+
+-- ============================================================
+-- COMPLETE RPC SUITE — Job Funding Lifecycle
+-- ============================================================
+-- Run order:
+--   1. schema.sql          (tables, enums, triggers)
+--   2. job_funding_ledger.sql  (ledger table, views, cache trigger)
+--   3. THIS FILE           (all RPCs)
+-- ============================================================
+-- Functions in this file:
+--
+--   [Auth]
+--   insert_user_profile        — profile + bank account (atomic)
+--
+--   [Job Posting]
+--   create_job_with_funding    — deduct wallet → job ACTIVE → ledger FUND
+--
+--   [Worker Flow]
+--   apply_and_start_job        — slot check + application creation
+--   submit_job_proof           — proof + items + RESERVE ledger entry
+--
+--   [Employer Verification]
+--   verify_and_approve         — APPROVE: RESERVE confirmed, job_payment created
+--   verify_and_reject          — REJECT: UNRESERVE ledger, slot freed
+--   bulk_verify_applications   — batch approve/reject up to 50 at once
+--
+--   [Payment Release]
+--   release_payment            — RELEASE ledger + worker wallet CREDIT
+--   auto_release_approved      — called by cron: releases all pending APPROVED
+--
+--   [Job Management]
+--   cancel_job_and_refund      — REFUND available_amount back to poster
+--   pause_job / resume_job     — toggle job visibility
+-- ============================================================
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- HELPER: recompute available balance from ledger (authoritative)
+-- Used inside RPCs for authorization decisions. Never trust the cache.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION fn_ledger_available(p_job_id UUID)
+RETURNS NUMERIC
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT
+        jf.funded_amount
+        - COALESCE(SUM(l.amount) FILTER (WHERE l.tx_type = 'RESERVE'),   0)
+        + COALESCE(SUM(l.amount) FILTER (WHERE l.tx_type = 'UNRESERVE'), 0)
+        - COALESCE(SUM(l.amount) FILTER (WHERE l.tx_type = 'RELEASE'),   0)
+        - COALESCE(SUM(l.amount) FILTER (WHERE l.tx_type = 'REFUND'),    0)
+    FROM job_funding jf
+    LEFT JOIN job_funding_ledger l ON l.job_id = jf.job_id
+    WHERE jf.job_id = p_job_id
+    GROUP BY jf.funded_amount;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- HELPER: authoritative wallet balance from transactions
+-- Used inside RPCs for debit authorization. Never trust wallet.balance.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION fn_wallet_balance(p_wallet_id UUID)
+RETURNS NUMERIC
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT
+        COALESCE(SUM(amount) FILTER (WHERE type = 'CREDIT'), 0) -
+        COALESCE(SUM(amount) FILTER (WHERE type = 'DEBIT'),  0)
+    FROM wallet_transactions
+    WHERE wallet_id = p_wallet_id;
+$$;
+
+
+-- ============================================================
+-- 1. INSERT USER PROFILE
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION insert_user_profile(
+    p_first_name     TEXT,
+    p_last_name      TEXT,
+    p_phone          TEXT,
+    p_gender         gender_enum,
+    p_state          nigerian_state_enum,
+    p_user_type      TEXT,
+    p_bank_name      TEXT,
+    p_account_number TEXT,
+    p_account_name   TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_profile user_profiles%ROWTYPE;
+    v_bank    user_bank_accounts%ROWTYPE;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    IF EXISTS (SELECT 1 FROM user_profiles WHERE user_id = v_user_id) THEN
+        RAISE EXCEPTION 'Profile already exists for this user';
+    END IF;
+
+    INSERT INTO user_profiles (user_id, first_name, last_name, gender, state, metadata)
+    VALUES (v_user_id, p_first_name, p_last_name, p_gender, p_state,
+            jsonb_build_object('user_type', p_user_type))
+    RETURNING * INTO v_profile;
+
+    INSERT INTO user_contacts (user_id, phone) VALUES (v_user_id, p_phone)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO user_bank_accounts (
+        user_id, bank_name, account_number, account_name, is_verified, is_default
+    ) VALUES (v_user_id, p_bank_name, p_account_number, p_account_name, FALSE, TRUE)
+    RETURNING * INTO v_bank;
+
+    INSERT INTO wallet (user_id) VALUES (v_user_id) ON CONFLICT (user_id) DO NOTHING;
+
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'profile', row_to_json(v_profile),
+        'bank',    row_to_json(v_bank)
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 2. CREATE JOB WITH FUNDING
+-- Deducts from poster wallet → job ACTIVE → ledger FUND entry
+-- Returns insufficient_balance error if wallet too low (frontend
+-- redirects to deposit page on this error code).
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION create_job_with_funding(
+    p_platform_id           UUID,
+    p_job_type              job_type_enum,
+    p_target_url            TEXT,
+    p_payout_amount         NUMERIC,
+    p_payout_currency       TEXT,
+    p_auto_approve          BOOLEAN,
+    p_requires_screenshot   BOOLEAN,
+    p_requires_before_proof BOOLEAN,
+    p_proof_instructions    TEXT,
+    p_title                 TEXT,
+    p_description           TEXT,
+    p_total_slots           INTEGER,
+    p_expires_at            TIMESTAMPTZ
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_poster_id     UUID;
+    v_wallet        wallet%ROWTYPE;
+    v_escrow_amount NUMERIC;
+    v_platform_fee  NUMERIC;
+    v_total_charge  NUMERIC;
+    v_true_balance  NUMERIC;
+    v_job           jobs%ROWTYPE;
+    v_wallet_tx_id  UUID;
+BEGIN
+    v_poster_id := auth.uid();
+    IF v_poster_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    IF p_payout_amount <= 0  THEN RAISE EXCEPTION 'Payout amount must be positive'; END IF;
+    IF p_total_slots   <= 0  THEN RAISE EXCEPTION 'Total slots must be positive';   END IF;
+
+    v_escrow_amount := p_payout_amount * p_total_slots;
+    v_platform_fee  := ROUND(v_escrow_amount * 0.10, 2);
+    v_total_charge  := v_escrow_amount + v_platform_fee;
+
+    -- Lock poster wallet row
+    SELECT * INTO v_wallet FROM wallet WHERE user_id = v_poster_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Wallet not found for user'; END IF;
+    IF v_wallet.is_frozen THEN RAISE EXCEPTION 'Your wallet is currently frozen. Contact support.'; END IF;
+
+    -- ── Authorization: ALWAYS recompute from transactions, never trust cache ──
+    v_true_balance := fn_wallet_balance(v_wallet.id);
+
+    IF v_true_balance < v_total_charge THEN
+        RETURN jsonb_build_object(
+            'success',    FALSE,
+            'error',      'insufficient_balance',
+            'required',   v_total_charge,
+            'available',  v_true_balance,
+            'shortfall',  v_total_charge - v_true_balance,
+            'escrow',     v_escrow_amount,
+            'fee',        v_platform_fee
+        );
+    END IF;
+
+    -- ── Debit poster wallet ───────────────────────────────────────────────────
+    INSERT INTO wallet_transactions (
+        wallet_id, type, amount, balance_before, balance_after, source, note
+    ) VALUES (
+        v_wallet.id, 'DEBIT', v_total_charge,
+        v_wallet.balance, v_wallet.balance - v_total_charge,
+        'JOB_FUNDING',
+        format('Escrow ₦%s (%s slots × ₦%s) + fee ₦%s | job: %s',
+               v_escrow_amount, p_total_slots, p_payout_amount, v_platform_fee, p_title)
+    ) RETURNING id INTO v_wallet_tx_id;
+
+    -- Sync cached balance
+    UPDATE wallet SET balance = balance - v_total_charge WHERE id = v_wallet.id;
+
+    -- ── Create job — immediately ACTIVE, funds confirmed above ────────────────
+    INSERT INTO jobs (
+        user_id, platform_id, job_type, status,
+        target_url, payout_amount, payout_currency,
+        auto_approve, requires_screenshot, requires_before_proof,
+        proof_instructions, title, description,
+        total_slots, expires_at, posted_at
+    ) VALUES (
+        v_poster_id, p_platform_id, p_job_type, 'ACTIVE',
+        p_target_url, p_payout_amount, p_payout_currency,
+        p_auto_approve, p_requires_screenshot, p_requires_before_proof,
+        p_proof_instructions, p_title, p_description,
+        p_total_slots, p_expires_at, NOW()
+    ) RETURNING * INTO v_job;
+
+    -- ── Create funding summary (cache) ────────────────────────────────────────
+    INSERT INTO job_funding (
+        job_id, funded_amount, reserved_amount, released_amount,
+        refunded_amount, available_amount, status
+    ) VALUES (
+        v_job.id, v_escrow_amount, 0, 0, 0, v_escrow_amount, 'ACTIVE'
+    );
+
+    -- ── Write FUND ledger entry (trigger syncs cache) ─────────────────────────
+    INSERT INTO job_funding_ledger (
+        job_id, tx_type, amount,
+        balance_after_available, balance_after_reserved, balance_after_released,
+        note
+    ) VALUES (
+        v_job.id, 'FUND', v_escrow_amount,
+        v_escrow_amount, 0, 0,
+        format('Initial escrow from wallet tx %s', v_wallet_tx_id)
+    );
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'job_id',         v_job.id,
+        'escrow_amount',  v_escrow_amount,
+        'platform_fee',   v_platform_fee,
+        'total_charged',  v_total_charge,
+        'wallet_tx_id',   v_wallet_tx_id,
+        'job_status',     v_job.status
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 3. APPLY AND START JOB
+-- Slot check + duplicate guard + application created at WORKING
+-- NOTE: No ledger entry here — reservation happens on submission,
+-- not on application. Worker might abandon without submitting.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION apply_and_start_job(p_job_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_worker_id UUID;
+    v_job       jobs%ROWTYPE;
+    v_app       job_applications%ROWTYPE;
+BEGIN
+    v_worker_id := auth.uid();
+    IF v_worker_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Job not found'; END IF;
+
+    IF v_job.status != 'ACTIVE' THEN
+        RAISE EXCEPTION 'Job is not currently active (status: %)', v_job.status;
+    END IF;
+
+    IF v_job.filled_slots >= v_job.total_slots THEN
+        RAISE EXCEPTION 'All slots are filled for this job';
+    END IF;
+
+    -- Employer cannot work their own job
+    IF v_job.user_id = v_worker_id THEN
+        RAISE EXCEPTION 'You cannot apply to your own job';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM job_applications
+        WHERE job_id = p_job_id AND worker_id = v_worker_id
+    ) THEN
+        RAISE EXCEPTION 'You have already applied for this job';
+    END IF;
+
+    INSERT INTO job_applications (job_id, worker_id, status)
+    VALUES (p_job_id, v_worker_id, 'WORKING')
+    RETURNING * INTO v_app;
+
+    UPDATE jobs SET applications_count = applications_count + 1 WHERE id = p_job_id;
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'application_id', v_app.id,
+        'status',         v_app.status,
+        'expires_at',     v_job.expires_at
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 4. SUBMIT JOB PROOF
+-- Creates job_proof + items atomically.
+-- Writes RESERVE ledger entry — slot is now financially claimed.
+-- Auto-flags fire via trigger on job_proofs insert.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION submit_job_proof(
+    p_application_id    UUID,
+    p_worker_social_url TEXT,
+    p_instructions_seen BOOLEAN,
+    p_items             JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_worker_id   UUID;
+    v_app         job_applications%ROWTYPE;
+    v_job         jobs%ROWTYPE;
+    v_funding     job_funding%ROWTYPE;
+    v_proof       job_proofs%ROWTYPE;
+    v_item        JSONB;
+    v_flags       JSONB;
+    v_live_avail  NUMERIC;
+BEGIN
+    v_worker_id := auth.uid();
+    IF v_worker_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    SELECT * INTO v_app
+    FROM job_applications
+    WHERE id = p_application_id AND worker_id = v_worker_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Application not found or does not belong to you'; END IF;
+
+    IF v_app.status != 'WORKING' THEN
+        RAISE EXCEPTION 'Application must be WORKING to submit proof (current: %)', v_app.status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM job_proofs WHERE application_id = p_application_id) THEN
+        RAISE EXCEPTION 'Proof already submitted for this application';
+    END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = v_app.job_id;
+    SELECT * INTO v_funding FROM job_funding WHERE job_id = v_app.job_id FOR UPDATE;
+
+    -- ── Authorization: recompute available from ledger ────────────────────────
+    v_live_avail := fn_ledger_available(v_app.job_id);
+
+    IF v_live_avail < v_job.payout_amount THEN
+        RAISE EXCEPTION
+            'Insufficient escrow to reserve this slot (available: ₦%, needed: ₦%)',
+            v_live_avail, v_job.payout_amount;
+    END IF;
+
+    -- ── Create proof record (gap + is_late computed by trigger) ──────────────
+    INSERT INTO job_proofs (
+        application_id, worker_social_url,
+        instructions_seen, submitted_at
+    ) VALUES (
+        p_application_id, p_worker_social_url,
+        p_instructions_seen, NOW()
+    ) RETURNING * INTO v_proof;
+
+    -- ── Insert proof items ────────────────────────────────────────────────────
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    LOOP
+        INSERT INTO job_proof_items (proof_id, proof_type, value, is_before, display_order)
+        VALUES (
+            v_proof.id,
+            (v_item->>'proof_type')::proof_type_enum,
+            v_item->>'value',
+            (v_item->>'is_before')::boolean,
+            (v_item->>'display_order')::integer
+        );
+    END LOOP;
+
+    -- ── Transition application WORKING → SUBMITTED ────────────────────────────
+    UPDATE job_applications SET status = 'SUBMITTED', updated_at = NOW()
+    WHERE id = p_application_id;
+
+    -- ── Write RESERVE ledger entry ────────────────────────────────────────────
+    -- Trigger fn_sync_funding_cache fires and updates job_funding cache
+    INSERT INTO job_funding_ledger (
+        job_id, application_id, tx_type, amount,
+        balance_after_available, balance_after_reserved, balance_after_released,
+        note
+    ) VALUES (
+        v_app.job_id, p_application_id, 'RESERVE', v_job.payout_amount,
+        v_live_avail - v_job.payout_amount,
+        v_funding.reserved_amount + v_job.payout_amount,
+        v_funding.released_amount,
+        format('Slot reserved on proof submission. Proof ID: %s', v_proof.id)
+    );
+
+    -- ── Collect auto-flags ────────────────────────────────────────────────────
+    SELECT jsonb_agg(jsonb_build_object(
+        'flag_type', flag_type,
+        'severity',  severity,
+        'detail',    detail
+    ))
+    INTO v_flags
+    FROM job_proof_flags WHERE proof_id = v_proof.id;
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'proof_id',       v_proof.id,
+        'submission_gap', v_proof.submission_gap_secs,
+        'is_late',        v_proof.is_late,
+        'reserved',       v_job.payout_amount,
+        'flags',          COALESCE(v_flags, '[]'::jsonb)
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 5. VERIFY AND APPROVE
+-- Employer reviews submitted proof → APPROVED.
+-- Creates job_verification + job_payment records.
+-- If auto_approve is TRUE this is called automatically by trigger.
+-- Payment is NOT released yet — release_payment does that.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION verify_and_approve(
+    p_application_id UUID,
+    p_notes          TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_employer_id UUID;
+    v_app         job_applications%ROWTYPE;
+    v_job         jobs%ROWTYPE;
+    v_proof       job_proofs%ROWTYPE;
+    v_payment     job_payments%ROWTYPE;
+BEGIN
+    v_employer_id := auth.uid();
+    IF v_employer_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    SELECT * INTO v_app FROM job_applications WHERE id = p_application_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Application not found'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = v_app.job_id;
+
+    -- Only the job owner or platform admin can verify
+    IF v_job.user_id != v_employer_id THEN
+        RAISE EXCEPTION 'Only the job owner can verify submissions';
+    END IF;
+
+    IF v_app.status != 'SUBMITTED' THEN
+        RAISE EXCEPTION 'Application must be SUBMITTED to approve (current: %)', v_app.status;
+    END IF;
+
+    -- Check proof exists
+    SELECT * INTO v_proof FROM job_proofs WHERE application_id = p_application_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'No proof found for this application'; END IF;
+
+    -- Check not already verified
+    IF EXISTS (SELECT 1 FROM job_verifications WHERE application_id = p_application_id) THEN
+        RAISE EXCEPTION 'This application has already been verified';
+    END IF;
+
+    -- ── Create verification record ────────────────────────────────────────────
+    INSERT INTO job_verifications (
+        application_id, verified_by, is_verified,
+        recheck_status, rejection_reason, verified_at
+    ) VALUES (
+        p_application_id, v_employer_id, TRUE,
+        CASE WHEN v_job.job_type IN ('FOLLOW', 'LIKE') THEN 'ACTIVE'::recheck_status_enum
+             ELSE 'INACTIVE'::recheck_status_enum END,
+        NULL,
+        NOW()
+    );
+
+    -- ── Transition application → APPROVED ─────────────────────────────────────
+    UPDATE job_applications SET status = 'APPROVED', updated_at = NOW()
+    WHERE id = p_application_id;
+
+    -- ── Increment filled_slots ────────────────────────────────────────────────
+    UPDATE jobs SET filled_slots = filled_slots + 1 WHERE id = v_app.job_id;
+
+    -- ── Create PENDING payment record ─────────────────────────────────────────
+    -- Reserved funds are already in the ledger. Payment record tracks the
+    -- release step. payment_status = PENDING until release_payment is called.
+    INSERT INTO job_payments (
+        application_id, amount, currency, payment_status
+    ) VALUES (
+        p_application_id, v_job.payout_amount, v_job.payout_currency, 'PENDING'
+    ) RETURNING * INTO v_payment;
+
+    -- ── Auto-release if job has auto_approve ─────────────────────────────────
+    -- We call release_payment immediately for auto-approve jobs.
+    -- For manual jobs the employer explicitly calls release_payment later.
+    IF v_job.auto_approve THEN
+        PERFORM release_payment(p_application_id);
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'application_id', p_application_id,
+        'payment_id',     v_payment.id,
+        'amount',         v_job.payout_amount,
+        'auto_released',  v_job.auto_approve
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 6. VERIFY AND REJECT
+-- Employer rejects submitted proof.
+-- Writes UNRESERVE ledger entry — slot available again.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION verify_and_reject(
+    p_application_id UUID,
+    p_reason         TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_employer_id  UUID;
+    v_app          job_applications%ROWTYPE;
+    v_job          jobs%ROWTYPE;
+    v_funding      job_funding%ROWTYPE;
+    v_reserved_row job_funding_ledger%ROWTYPE;
+BEGIN
+    v_employer_id := auth.uid();
+    IF v_employer_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    IF p_reason IS NULL OR TRIM(p_reason) = '' THEN
+        RAISE EXCEPTION 'A rejection reason is required';
+    END IF;
+
+    SELECT * INTO v_app FROM job_applications WHERE id = p_application_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Application not found'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = v_app.job_id;
+    IF v_job.user_id != v_employer_id THEN
+        RAISE EXCEPTION 'Only the job owner can reject submissions';
+    END IF;
+
+    IF v_app.status != 'SUBMITTED' THEN
+        RAISE EXCEPTION 'Application must be SUBMITTED to reject (current: %)', v_app.status;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM job_verifications WHERE application_id = p_application_id) THEN
+        RAISE EXCEPTION 'This application has already been verified';
+    END IF;
+
+    SELECT * INTO v_funding FROM job_funding WHERE job_id = v_app.job_id FOR UPDATE;
+
+    -- Confirm a RESERVE entry exists for this application
+    SELECT * INTO v_reserved_row
+    FROM job_funding_ledger
+    WHERE application_id = p_application_id AND tx_type = 'RESERVE'
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No reservation found for this application — cannot unreserve';
+    END IF;
+
+    -- ── Create rejection verification record ──────────────────────────────────
+    INSERT INTO job_verifications (
+        application_id, verified_by, is_verified,
+        recheck_status, rejection_reason, verified_at
+    ) VALUES (
+        p_application_id, v_employer_id, FALSE,
+        'INACTIVE', p_reason, NOW()
+    );
+
+    -- ── Transition application → REJECTED ────────────────────────────────────
+    UPDATE job_applications SET status = 'REJECTED', updated_at = NOW()
+    WHERE id = p_application_id;
+
+    -- ── Write UNRESERVE ledger entry (trigger syncs cache) ────────────────────
+    -- This frees the slot back to available_amount so another worker can claim it
+    INSERT INTO job_funding_ledger (
+        job_id, application_id, tx_type, amount,
+        balance_after_available, balance_after_reserved, balance_after_released,
+        note
+    ) VALUES (
+        v_app.job_id, p_application_id, 'UNRESERVE', v_job.payout_amount,
+        fn_ledger_available(v_app.job_id) + v_job.payout_amount,
+        GREATEST(0, v_funding.reserved_amount - v_job.payout_amount),
+        v_funding.released_amount,
+        format('Rejection: %s', p_reason)
+    );
+
+    -- ── Create rejection dispute opportunity ──────────────────────────────────
+    -- Worker can raise a dispute against this rejection.
+    -- We do not auto-create it; they choose to dispute from the frontend.
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'application_id', p_application_id,
+        'reason',         p_reason,
+        'slot_freed',     TRUE
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 7. BULK VERIFY APPLICATIONS
+-- Employer approves or rejects multiple submissions at once.
+-- Max 50 per call to avoid lock contention.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION bulk_verify_applications(
+    p_application_ids UUID[],
+    p_action          TEXT,   -- 'APPROVE' or 'REJECT'
+    p_reason          TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_employer_id UUID;
+    v_app_id      UUID;
+    v_results     JSONB := '[]'::jsonb;
+    v_result      JSONB;
+    v_ok          INTEGER := 0;
+    v_failed      INTEGER := 0;
+BEGIN
+    v_employer_id := auth.uid();
+    IF v_employer_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    IF array_length(p_application_ids, 1) > 50 THEN
+        RAISE EXCEPTION 'Maximum 50 applications per bulk action';
+    END IF;
+
+    IF p_action NOT IN ('APPROVE', 'REJECT') THEN
+        RAISE EXCEPTION 'Action must be APPROVE or REJECT';
+    END IF;
+
+    IF p_action = 'REJECT' AND (p_reason IS NULL OR TRIM(p_reason) = '') THEN
+        RAISE EXCEPTION 'A rejection reason is required for bulk rejection';
+    END IF;
+
+    FOREACH v_app_id IN ARRAY p_application_ids
+    LOOP
+        BEGIN
+            IF p_action = 'APPROVE' THEN
+                SELECT verify_and_approve(v_app_id, p_reason) INTO v_result;
+            ELSE
+                SELECT verify_and_reject(v_app_id, p_reason) INTO v_result;
+            END IF;
+
+            v_results := v_results || jsonb_build_array(
+                jsonb_build_object('application_id', v_app_id, 'success', TRUE)
+            );
+            v_ok := v_ok + 1;
+
+        EXCEPTION WHEN OTHERS THEN
+            v_results := v_results || jsonb_build_array(
+                jsonb_build_object(
+                    'application_id', v_app_id,
+                    'success', FALSE,
+                    'error', SQLERRM
+                )
+            );
+            v_failed := v_failed + 1;
+        END;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'success',  TRUE,
+        'approved', CASE WHEN p_action = 'APPROVE' THEN v_ok ELSE 0 END,
+        'rejected', CASE WHEN p_action = 'REJECT'  THEN v_ok ELSE 0 END,
+        'failed',   v_failed,
+        'results',  v_results
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 8. RELEASE PAYMENT
+-- Moves APPROVED application → PAID.
+-- RELEASE ledger entry → worker wallet CREDIT.
+-- Called automatically by verify_and_approve if auto_approve,
+-- or manually by employer from the verification dashboard.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION release_payment(p_application_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_caller_id     UUID;
+    v_app           job_applications%ROWTYPE;
+    v_job           jobs%ROWTYPE;
+    v_funding       job_funding%ROWTYPE;
+    v_payment       job_payments%ROWTYPE;
+    v_worker_wallet wallet%ROWTYPE;
+    v_wallet_tx_id  UUID;
+BEGIN
+    v_caller_id := auth.uid();
+
+    SELECT * INTO v_app FROM job_applications WHERE id = p_application_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Application not found'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = v_app.job_id;
+
+    -- Can be called by: employer (manual release) or internally (auto_approve)
+    -- When called internally v_caller_id may differ — allow internal calls
+    IF v_caller_id IS NOT NULL AND v_caller_id != v_job.user_id THEN
+        RAISE EXCEPTION 'Only the job owner can release payments';
+    END IF;
+
+    IF v_app.status != 'APPROVED' THEN
+        RAISE EXCEPTION 'Application must be APPROVED to release payment (current: %)', v_app.status;
+    END IF;
+
+    -- Get payment record
+    SELECT * INTO v_payment FROM job_payments WHERE application_id = p_application_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Payment record not found for this application'; END IF;
+
+    IF v_payment.payment_status = 'PAID' THEN
+        RETURN jsonb_build_object(
+            'success',    TRUE,
+            'idempotent', TRUE,
+            'message',    'Payment already released'
+        );
+    END IF;
+
+    -- Check reservation exists in ledger
+    IF NOT EXISTS (
+        SELECT 1 FROM job_funding_ledger
+        WHERE application_id = p_application_id AND tx_type = 'RESERVE'
+    ) THEN
+        RAISE EXCEPTION 'No ledger reservation found for application %', p_application_id;
+    END IF;
+
+    -- Ensure not already released
+    IF EXISTS (
+        SELECT 1 FROM job_funding_ledger
+        WHERE application_id = p_application_id AND tx_type = 'RELEASE'
+    ) THEN
+        RAISE EXCEPTION 'Payment already released in ledger for application %', p_application_id;
+    END IF;
+
+    SELECT * INTO v_funding FROM job_funding WHERE job_id = v_app.job_id FOR UPDATE;
+
+    -- Lock and validate worker wallet
+    SELECT * INTO v_worker_wallet FROM wallet WHERE user_id = v_app.worker_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Worker wallet not found'; END IF;
+    IF v_worker_wallet.is_frozen THEN
+        RAISE EXCEPTION 'Worker wallet is frozen. Payment cannot be released.';
+    END IF;
+
+    -- ── Credit worker wallet ──────────────────────────────────────────────────
+    INSERT INTO wallet_transactions (
+        wallet_id, type, amount,
+        balance_before, balance_after,
+        source, reference, note
+    ) VALUES (
+        v_worker_wallet.id, 'CREDIT', v_job.payout_amount,
+        v_worker_wallet.balance,
+        v_worker_wallet.balance + v_job.payout_amount,
+        'JOB_PAYMENT',
+        p_application_id::TEXT,
+        format('Payout for: %s', v_job.title)
+    ) RETURNING id INTO v_wallet_tx_id;
+
+    UPDATE wallet SET balance = balance + v_job.payout_amount WHERE id = v_worker_wallet.id;
+
+    -- ── Write RELEASE ledger entry (trigger syncs cache) ──────────────────────
+    INSERT INTO job_funding_ledger (
+        job_id, application_id, tx_type, amount,
+        balance_after_available, balance_after_reserved, balance_after_released,
+        note
+    ) VALUES (
+        v_app.job_id, p_application_id, 'RELEASE', v_job.payout_amount,
+        v_funding.available_amount,
+        GREATEST(0, v_funding.reserved_amount - v_job.payout_amount),
+        v_funding.released_amount + v_job.payout_amount,
+        format('Payment released. Wallet tx: %s', v_wallet_tx_id)
+    );
+
+    -- ── Update payment record ─────────────────────────────────────────────────
+    UPDATE job_payments
+    SET payment_status = 'PAID',
+        wallet_tx_id   = v_wallet_tx_id,
+        paid_at        = NOW()
+    WHERE id = v_payment.id;
+
+    -- ── Transition application → PAID ─────────────────────────────────────────
+    UPDATE job_applications SET status = 'PAID', updated_at = NOW()
+    WHERE id = p_application_id;
+
+    -- ── Auto-close job if all slots filled and released ───────────────────────
+    IF (SELECT filled_slots >= total_slots FROM jobs WHERE id = v_app.job_id) THEN
+        UPDATE jobs SET status = 'COMPLETED', completed_at = NOW() WHERE id = v_app.job_id;
+        UPDATE job_funding SET status = 'DEPLETED', closed_at = NOW() WHERE job_id = v_app.job_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success',       TRUE,
+        'amount',        v_job.payout_amount,
+        'wallet_tx_id',  v_wallet_tx_id,
+        'worker_id',     v_app.worker_id
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 9. AUTO RELEASE APPROVED (for cron / edge function)
+-- Releases all APPROVED applications that have waited > p_min_age_hours.
+-- Prevents employers from holding funds indefinitely.
+-- Call from pg_cron or a Supabase Edge Function on a schedule.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION auto_release_approved(p_min_age_hours INTEGER DEFAULT 24)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_app_id  UUID;
+    v_ok      INTEGER := 0;
+    v_failed  INTEGER := 0;
+    v_errors  JSONB   := '[]'::jsonb;
+BEGIN
+    FOR v_app_id IN
+        SELECT ja.id
+        FROM job_applications ja
+        WHERE ja.status = 'APPROVED'
+          AND ja.updated_at < NOW() - (p_min_age_hours || ' hours')::INTERVAL
+          -- Confirm payment not already released
+          AND NOT EXISTS (
+              SELECT 1 FROM job_funding_ledger l
+              WHERE l.application_id = ja.id AND l.tx_type = 'RELEASE'
+          )
+        ORDER BY ja.updated_at ASC
+        LIMIT 100
+    LOOP
+        BEGIN
+            PERFORM release_payment(v_app_id);
+            v_ok := v_ok + 1;
+        EXCEPTION WHEN OTHERS THEN
+            v_failed := v_failed + 1;
+            v_errors := v_errors || jsonb_build_array(
+                jsonb_build_object('application_id', v_app_id, 'error', SQLERRM)
+            );
+        END;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'released', v_ok,
+        'failed',   v_failed,
+        'errors',   v_errors
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 10. CANCEL JOB AND REFUND
+-- Cancels ACTIVE/PAUSED job. Refunds available_amount to poster.
+-- Reserved slots (pending payment) are NOT refunded here —
+-- they settle when each APPROVED application resolves.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION cancel_job_and_refund(p_job_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_poster_id     UUID;
+    v_job           jobs%ROWTYPE;
+    v_funding       job_funding%ROWTYPE;
+    v_live_avail    NUMERIC;
+    v_poster_wallet wallet%ROWTYPE;
+    v_wallet_tx_id  UUID;
+BEGIN
+    v_poster_id := auth.uid();
+    IF v_poster_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Job not found'; END IF;
+
+    IF v_job.user_id != v_poster_id THEN RAISE EXCEPTION 'You do not own this job'; END IF;
+
+    IF v_job.status NOT IN ('ACTIVE', 'PAUSED') THEN
+        RAISE EXCEPTION 'Only ACTIVE or PAUSED jobs can be cancelled (current: %)', v_job.status;
+    END IF;
+
+    SELECT * INTO v_funding FROM job_funding WHERE job_id = p_job_id FOR UPDATE;
+
+    -- Recompute from ledger (authoritative)
+    v_live_avail := fn_ledger_available(p_job_id);
+
+    IF v_live_avail <= 0 THEN
+        -- Nothing to refund — all slots taken
+        UPDATE jobs SET status = 'CANCELLED', completed_at = NOW() WHERE id = p_job_id;
+        UPDATE job_funding SET status = 'DEPLETED', closed_at = NOW() WHERE job_id = p_job_id;
+        RETURN jsonb_build_object(
+            'success', TRUE,
+            'refund',  0,
+            'message', 'Job cancelled. All funds already committed to workers.'
+        );
+    END IF;
+
+    SELECT * INTO v_poster_wallet FROM wallet WHERE user_id = v_poster_id FOR UPDATE;
+
+    -- ── Refund available escrow to poster ─────────────────────────────────────
+    INSERT INTO wallet_transactions (
+        wallet_id, type, amount,
+        balance_before, balance_after,
+        source, note
+    ) VALUES (
+        v_poster_wallet.id, 'CREDIT', v_live_avail,
+        v_poster_wallet.balance, v_poster_wallet.balance + v_live_avail,
+        'JOB_REFUND',
+        format('Refund from cancelled job "%s" — ₦%s returned', v_job.title, v_live_avail)
+    ) RETURNING id INTO v_wallet_tx_id;
+
+    UPDATE wallet SET balance = balance + v_live_avail WHERE id = v_poster_wallet.id;
+
+    -- ── Write REFUND ledger entry ─────────────────────────────────────────────
+    INSERT INTO job_funding_ledger (
+        job_id, tx_type, amount,
+        balance_after_available, balance_after_reserved, balance_after_released,
+        note
+    ) VALUES (
+        p_job_id, 'REFUND', v_live_avail,
+        0,
+        v_funding.reserved_amount,
+        v_funding.released_amount,
+        format('Job cancelled. ₦%s refunded. Wallet tx: %s', v_live_avail, v_wallet_tx_id)
+    );
+
+    UPDATE jobs SET status = 'CANCELLED', completed_at = NOW() WHERE id = p_job_id;
+    UPDATE job_funding SET status = 'REFUNDED', closed_at = NOW() WHERE job_id = p_job_id;
+
+    RETURN jsonb_build_object(
+        'success',        TRUE,
+        'refund_amount',  v_live_avail,
+        'wallet_tx_id',   v_wallet_tx_id,
+        'reserved_still', v_funding.reserved_amount
+    );
+END;
+$$;
+
+
+-- ============================================================
+-- 11. PAUSE / RESUME JOB
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION pause_job(p_job_id UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_poster_id UUID; v_job jobs%ROWTYPE;
+BEGIN
+    v_poster_id := auth.uid();
+    SELECT * INTO v_job FROM jobs WHERE id = p_job_id;
+    IF v_job.user_id != v_poster_id THEN RAISE EXCEPTION 'Not your job'; END IF;
+    IF v_job.status != 'ACTIVE' THEN RAISE EXCEPTION 'Job must be ACTIVE to pause'; END IF;
+    UPDATE jobs SET status = 'PAUSED' WHERE id = p_job_id;
+    RETURN jsonb_build_object('success', TRUE, 'status', 'PAUSED');
+END; $$;
+
+CREATE OR REPLACE FUNCTION resume_job(p_job_id UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_poster_id UUID; v_job jobs%ROWTYPE;
+BEGIN
+    v_poster_id := auth.uid();
+    SELECT * INTO v_job FROM jobs WHERE id = p_job_id;
+    IF v_job.user_id != v_poster_id THEN RAISE EXCEPTION 'Not your job'; END IF;
+    IF v_job.status != 'PAUSED' THEN RAISE EXCEPTION 'Job must be PAUSED to resume'; END IF;
+    UPDATE jobs SET status = 'ACTIVE' WHERE id = p_job_id;
+    RETURN jsonb_build_object('success', TRUE, 'status', 'ACTIVE');
+END; $$;
+
+
+-- ============================================================
+-- 12. GET JOB SUBMISSIONS (for employer verification dashboard)
+-- Returns all SUBMITTED applications for a job with full proof
+-- data, flags, and funding snapshot. Single query for the page.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION get_job_submissions(p_job_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_employer_id UUID;
+    v_job         jobs%ROWTYPE;
+    v_result      JSONB;
+BEGIN
+    v_employer_id := auth.uid();
+    IF v_employer_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    SELECT * INTO v_job FROM jobs WHERE id = p_job_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Job not found'; END IF;
+    IF v_job.user_id != v_employer_id THEN RAISE EXCEPTION 'Access denied'; END IF;
+
+    SELECT jsonb_build_object(
+        'job', row_to_json(v_job),
+
+        'funding', (
+            SELECT row_to_json(jf)
+            FROM job_funding jf WHERE job_id = p_job_id
+        ),
+
+        'funding_live', (
+            SELECT jsonb_build_object(
+                'available_live', fn_ledger_available(p_job_id),
+                'reserved_live',  COALESCE(SUM(amount) FILTER (WHERE tx_type = 'RESERVE'),   0)
+                                - COALESCE(SUM(amount) FILTER (WHERE tx_type = 'UNRESERVE'), 0),
+                'released_live',  COALESCE(SUM(amount) FILTER (WHERE tx_type = 'RELEASE'),   0)
+            )
+            FROM job_funding_ledger WHERE job_id = p_job_id
+        ),
+
+        'submissions', (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'application',    row_to_json(ja),
+                    'worker_profile', row_to_json(up),
+                    'proof',          row_to_json(jp),
+                    'proof_items',    (
+                        SELECT jsonb_agg(row_to_json(pi) ORDER BY pi.display_order)
+                        FROM job_proof_items pi WHERE pi.proof_id = jp.id
+                    ),
+                    'flags',          (
+                        SELECT jsonb_agg(row_to_json(pf))
+                        FROM job_proof_flags pf WHERE pf.proof_id = jp.id AND NOT pf.resolved
+                    ),
+                    'verification',   row_to_json(jv),
+                    'payment',        row_to_json(jpm)
+                )
+                ORDER BY ja.updated_at DESC
+            )
+            FROM job_applications ja
+            LEFT JOIN user_profiles   up  ON up.user_id         = ja.worker_id
+            LEFT JOIN job_proofs      jp  ON jp.application_id  = ja.id
+            LEFT JOIN job_verifications jv ON jv.application_id = ja.id
+            LEFT JOIN job_payments    jpm ON jpm.application_id = ja.id
+            WHERE ja.job_id = p_job_id
+              AND ja.status IN ('SUBMITTED', 'APPROVED', 'REJECTED', 'PAID')
+        )
+    ) INTO v_result;
+
+    RETURN v_result;
+END;
+$$;
+
+
+
