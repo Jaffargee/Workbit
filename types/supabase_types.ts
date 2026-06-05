@@ -46,7 +46,7 @@ export interface SupabaseUser {
 
       created_at: string
       updated_at: string
-      is_anonymous: boolean
+      is_anonymous: boolean,
 }
 
 export interface SupabaseSession {

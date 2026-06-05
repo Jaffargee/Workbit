@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: AuthContextProps) => {
                               *, 
                               user_contacts(email, phone), 
                               user_bank_accounts(account_name, bank_name, account_number, is_default, is_verified),
-                              wallet(*, wallet_transactions!wallet_transactions_wallet_id_fkey(*)),
+                              wallet(*, wallet_deposits!wallet_deposits_wallet_id_fkey(*), wallet_transactions!wallet_transactions_wallet_id_fkey(*)),
                               referral_rewards!referral_rewards_referrer_id_fkey(reward_amount, status),
                               jobs(*)
                         `)

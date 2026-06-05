@@ -84,6 +84,7 @@ export interface UserProfile {
       jobs: Job[] | null;
       created_at: string;
       updated_at: string;
+      is_subscribed: boolean;
 }
 
 export interface UserBankAccount {
@@ -121,7 +122,7 @@ export interface Job {
       expires_at: string | null;
       created_at: string;
       // joined
-      platforms?: Platform;
+      platforms: Platform_;
 }
 
 export interface JobApplication {
@@ -161,7 +162,26 @@ export interface Wallet {
       currency: string;
       is_frozen: boolean;
       created_at: string;
+      wallet_deposits?: WalletDeposit[];
       wallet_transactions?: WalletTransaction[];
+}
+
+export interface WalletDeposit {
+      id: string;
+      user_id: string;
+      wallet_id: string;
+      wallet_tx_id: string;
+      status: 'CONFIRMED' | 'PENDING' | 'FAILED';
+      currency: 'NGN'
+      amount: number;
+      flw_status: string;
+      flw_ref: string;
+      tx_ref: string;
+      payment_type: 'bank_transfer' | 'ussd' | 'account' | 'card'
+      transaction_id: number;
+      flw_created_at: string;
+      created_at: string;
+
 }
 
 export interface WalletTransaction {

@@ -13,6 +13,8 @@ import Marketplace from './pages/Marketplace';
 import Job from './pages/Marketplace/Job';
 import ProtectedRoutes from './contexts/protected_routes';
 import Verified from './pages/Auth/Verified';
+import JobVerification from './pages/Marketplace/JobVerification';
+import JobDir from './pages/Marketplace/JobDir';
 
 const RenderLayout = ({ element }: { element: React.ReactNode }) => {
       return <Layout>{element}</Layout>
@@ -48,6 +50,16 @@ const App: React.FC = () => {
                               <Route path="/marketplace" element={<RenderLayout element={
                                     <ProtectedRoutes>
                                           <Marketplace />
+                                    </ProtectedRoutes>
+                              } />} />
+                              <Route path="/marketplace/job_v/:job_id" element={<RenderLayout element={
+                                    <ProtectedRoutes>
+                                          <JobVerification />
+                                    </ProtectedRoutes>
+                              } />} />
+                              <Route path="/marketplace/owner/:job_id" element={<RenderLayout element={
+                                    <ProtectedRoutes>
+                                          <JobDir />
                                     </ProtectedRoutes>
                               } />} />
                               <Route path="/marketplace/:job_id" element={<RenderLayout element={

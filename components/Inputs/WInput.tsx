@@ -5,24 +5,32 @@ type WInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
       name: string,
       icon?: React.ReactNode,
       label: string,
+      prefix?: string;
+      _under?: string | React.ReactNode;
       className?: string;
 }
 
 const EYE_ICON_SIZE = 16;
 const EYE_ICON_COLOR = '#494949ff'
 
-const WInput = ({ name, icon, label, className, ...rest }: WInputProps) => {
+const WInput = ({ name, icon, label, className, prefix, _under, ...rest }: WInputProps) => {
       return (
-            <div className="space-y-2 w-full">
-                  <label htmlFor={name} className="text-sm font-bold text-slate-700 flex items-center gap-2 px-1">
+            <div className="space-y-2 w-full relative">
+                  <label htmlFor={name} className="text-sm font-bold text-slate-700 flex items-center gap-2 px-1 relative">
                         {icon && icon} {label}
                   </label>
                   <input
-                        className={`w-full appearance-none bg-slate-50 border border-slate-200 px-5 py-2 rounded-md focus:outline-none focus:border-blue-500 transition-all text-md ${className}`}
+                        className={`w-full ${prefix && 'indent-2'} relative appearance-none bg-slate-50 border border-slate-200 px-5 py-2 rounded-md focus:outline-none focus:border-blue-500 transition-all text-md ${className}`}
                         id={name}
                         name={name}
                         {...rest}
                   />
+                  {_under && <div className="px-1 text-xs text-slate-500">{_under}</div>}
+                  {prefix && (
+                        <div className="absolute left-3 top-[2.35rem] transform  text-slate-500 text-md pointer-events-none z-10">
+                              {prefix}
+                        </div>
+                  )}
             </div>
       )
 }

@@ -1,8 +1,8 @@
-import { JobData } from '@/types/types'
-import { AlertCircle, CheckCircle2, FileWarning, MessageCircleWarning, UploadCloud } from 'lucide-react'
+import { Job } from '@/types/types'
+import { AlertCircle, MessageCircleWarning, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 
-const SideBarForm = ({ job, handleOnSubmit }) => {
+const SideBarForm = ({ job, handleOnSubmit }: { job: Job, handleOnSubmit: Function }) => {
 
       const [proof, setProof] = useState("");
       const [p_url, setPUrl] = useState("");
@@ -39,10 +39,10 @@ const SideBarForm = ({ job, handleOnSubmit }) => {
 
                   <div className="space-y-4">
 
-                        <label htmlFor='screenshot1' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img1?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
+                        <label htmlFor='screenshot1' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img1?.length && imagePreview.img1?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
                               <div className='flex flex-1 flex-col relative w-full cursor-pointer overflow-hidden'>
                                     <div className="block w-full relative">
-                                          <img src={imagePreview.img1} alt={imagePreview.img1} />
+                                          <img src={imagePreview.img1 as string} alt={imagePreview.img1 as string} />
                                     </div>
                                     <input required type='file' onChange={(e) => handleImageChange(e, 0)} className='h-full w-full absolute top-0 left-0 hidden z-[1000] p-4' id='screenshot1' name='screenshot1' />
                                     <div className="flex items-center justify-center p-4 h-full w-full gap-3 text-blue-600 text-xl">
@@ -51,10 +51,10 @@ const SideBarForm = ({ job, handleOnSubmit }) => {
                               </div>
                         </label>
 
-                        <label htmlFor='screenshot2' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img2?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
+                        <label htmlFor='screenshot2' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img2?.length  && imagePreview.img2?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
                               <div className='flex flex-1 flex-col relative w-full cursor-pointer overflow-hidden'>
                                     <div className="block w-full relative">
-                                          <img src={imagePreview.img2} alt={imagePreview.img2} />
+                                          <img src={imagePreview.img2 as string} alt={imagePreview.img2 as string} />
                                     </div>
                                     <input required type='file' onChange={(e) => handleImageChange(e, 1)} className='h-full w-full absolute top-0 left-0 hidden z-[1000] p-4' id='screenshot2' name='screenshot2' />
                                     <div className="flex items-center justify-center p-4 h-full w-full gap-3 text-blue-600 text-xl">
@@ -63,10 +63,10 @@ const SideBarForm = ({ job, handleOnSubmit }) => {
                               </div>
                         </label>
 
-                        <label htmlFor='screenshot3' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img2?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
+                        <label htmlFor='screenshot3' className={`relative flex min-h-[100px] w-full rounded-xl overflow-hidden border-2 ${imagePreview && imagePreview.img2?.length  &&  imagePreview.img2?.length > 0 ? 'border-slate-100 border-solid' : 'border-dashed border-blue-600'}`}>
                               <div className='flex flex-1 flex-col relative w-full cursor-pointer overflow-hidden'>
                                     <div className="block w-full relative">
-                                          <img src={imagePreview.img3} alt={imagePreview.img3} />
+                                          <img src={imagePreview.img3 as string} alt={imagePreview.img3 as string} />
                                     </div>
                                     <input required type='file' onChange={(e) => handleImageChange(e, 2)} className='h-full w-full absolute top-0 left-0 hidden z-[1000] p-4' id='screenshot3' name='screenshot3' />
                                     <div className="flex items-center justify-center p-4 h-full w-full gap-3 text-blue-600 text-xl">

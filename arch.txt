@@ -1,0 +1,19 @@
+Schema Group Job:
+      Schema Job
+      Schema Job.Application
+      Schema Job.Payment
+      Schema Job.Funding
+      Schema Job.Funding_Ledger
+      Schema Job.Disputes
+      Schema Job.Proofs
+      Schema Job.Proof_Item
+      Schema Job.Proof_Flags
+      Schema Job.Verifications
+
+
+Schema Group Description:
+      Job - Job data, details, all things related to job, e.g slots, payout amount, link, etc.
+      Job.Funding - Every single job needs funding for workers to work and get paid, so it shows which jobs are funded or underfunded, reserved amount when jobs are applied, release amount when jobs are verified and init payment, and amount remaining in the job fund, it job expires funds are transfered back to escrow wallet
+      Job.Application - which workers apply for which job, worker can apply for multiple jobs but can't apply to the same job twice. it include status, worker and job ids, and timestamp.
+      Job.Verifications - Verified applied jobs, verified by employer or workbit, recheck status after job has been verified, to see if job still active or inactive, is_verfied indicating is verified, if not rejection reason is provided.
+      

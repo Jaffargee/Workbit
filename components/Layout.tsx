@@ -85,13 +85,13 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
                   {/* Mobile Sidebar Overlay */}
                   {isSidebarOpen && (
                         <div
-                              className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+                              className="fixed inset-0 bg-slate-900/50 z-20 lg:hidden"
                               onClick={() => setSidebarOpen(false)}
                         />
                   )}
 
                   {/* Sidebar */}
-                  <aside className={`fixed lg:static inset-y-0 left-0 w-66 bg-white border-r border-slate-200 z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+                  <aside className={`fixed lg:static inset-y-0 left-0 w-66 bg-white border-r border-slate-200 z-40 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
                         <div className="h-full flex flex-col p-4">
                               <div className="mb-10 px-2 cursor-pointer">
                                     <Logo size="md" />
@@ -161,7 +161,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
                         </header>
 
                         {/* Page Content */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto">
                               <div className="max-w-8xl overflow-auto mx-auto space-y-4 pb-10">
                                     {children}
                               </div>
