@@ -1,20 +1,20 @@
-import { JobData } from '@/types/types'
-import { ExternalLink, Zap } from 'lucide-react'
-import React from 'react'
-import { Link } from 'react-router-dom'
+import { JobData } from '@/types/types';
+import { ExternalLink, Zap } from 'lucide-react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const InstructionCard = ({ job }: { job: JobData }) => {
       return (
             <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm space-y-6">
                   <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <Zap size={20} className="text-amber-500" />{" "}Proof Instructions
+                        <Zap size={20} className="text-amber-500" /> Proof
+                        Instructions
                   </h3>
                   <div className="prose prose-slate max-w-none bg-amber-50/50 p-6 rounded-3xl border border-amber-100 text-slate-700 leading-relaxed">
                         {job.proof_instructions}
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4">
-
                         <Link
                               to={job.target_url}
                               target="_blank"
@@ -30,10 +30,9 @@ const InstructionCard = ({ job }: { job: JobData }) => {
                                     </div>
                               </div>
                         </Link>
-
                   </div>
             </div>
-      )
-}
+      );
+};
 
-export default InstructionCard
+export default InstructionCard;

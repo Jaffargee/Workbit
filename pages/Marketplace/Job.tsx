@@ -993,7 +993,9 @@ async function uploadScreenshot(file: File, userId: string): Promise<string> {
             .upload(path, file, { upsert: false });
 
       if (error || !data) {
-            throw new Error(`Upload failed: ${error?.message || 'No data returned'}`);
+            throw new Error(
+                  `Upload failed: ${error?.message || 'No data returned'}`
+            );
       }
 
       const {
@@ -1169,7 +1171,10 @@ const JobDetail: React.FC = () => {
                         const items: ProofItemPayload[] = [];
 
                         // 1. Upload before screenshot if required
-                        if (job?.requires_before_proof && proofForm.before_file) {
+                        if (
+                              job?.requires_before_proof &&
+                              proofForm.before_file
+                        ) {
                               const beforeUrl = await uploadScreenshot(
                                     proofForm.before_file,
                                     user!.user_id
@@ -1181,7 +1186,6 @@ const JobDetail: React.FC = () => {
                                     is_before: true,
                                     display_order: 0,
                               });
-
                         }
 
                         // 2. Upload after screenshot
@@ -1211,8 +1215,10 @@ const JobDetail: React.FC = () => {
                               'submit_job_proof',
                               {
                                     p_application_id: application!.id,
-                                    p_worker_social_url: proofForm.worker_social_url.trim(),
-                                    p_instructions_seen: proofForm.instructions_seen,
+                                    p_worker_social_url:
+                                          proofForm.worker_social_url.trim(),
+                                    p_instructions_seen:
+                                          proofForm.instructions_seen,
                                     p_items: items,
                               }
                         );

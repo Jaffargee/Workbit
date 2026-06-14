@@ -1,15 +1,21 @@
-import { JobData, Platform, UIPlatform } from '@/types/types'
+import { JobData, Platform, UIPlatform } from '@/types/types';
 
-const JobHeroCard = ({ job, platformInfo }: { job: JobData, platformInfo: UIPlatform }) => {
-
+const JobHeroCard = ({
+      job,
+      platformInfo,
+}: {
+      job: JobData;
+      platformInfo: UIPlatform;
+}) => {
       const progress = (job.filled_slots / job.total_slots) * 100;
 
       return (
             <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm space-y-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        
                         <div className="flex items-center max-sm:flex-col gap-4 pt-6 w-full">
-                              <div className={`flex items-center justify-center w-[150px] h-[150px] rounded-full text-white ${platformInfo?.color}`}>
+                              <div
+                                    className={`flex items-center justify-center w-[150px] h-[150px] rounded-full text-white ${platformInfo?.color}`}
+                              >
                                     {platformInfo?.icon}
                               </div>
                               <div className="flex-1">
@@ -17,8 +23,7 @@ const JobHeroCard = ({ job, platformInfo }: { job: JobData, platformInfo: UIPlat
                                           {job.title}
                                     </h1>
                                     <p className="text-blue-600 font-semibold mt-1">
-                                          {job.task_type} •{" "}
-                                          {job.platform_id}
+                                          {job.task_type} • {job.platform_id}
                                     </p>
                               </div>
                         </div>
@@ -31,7 +36,6 @@ const JobHeroCard = ({ job, platformInfo }: { job: JobData, platformInfo: UIPlat
                                     ₦{job.payout_amount?.toLocaleString()}
                               </p>
                         </div>
-
                   </div>
 
                   <div className="pt-6 border-t border-slate-50">
@@ -47,8 +51,8 @@ const JobHeroCard = ({ job, platformInfo }: { job: JobData, platformInfo: UIPlat
                         <div className="flex items-center justify-between text-sm font-bold text-slate-500 uppercase tracking-widest">
                               <span>Task Completion</span>
                               <span>
-                                    {job.filled_slots} /{" "}
-                                    {job.total_slots} filled
+                                    {job.filled_slots} / {job.total_slots}{' '}
+                                    filled
                               </span>
                         </div>
                         <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
@@ -60,12 +64,12 @@ const JobHeroCard = ({ job, platformInfo }: { job: JobData, platformInfo: UIPlat
                               ></div>
                         </div>
                         <p className="text-xs font-medium text-slate-400 text-center italic">
-                              Only {job.available_slots} slots
-                              remaining. Act fast!
+                              Only {job.available_slots} slots remaining. Act
+                              fast!
                         </p>
                   </div>
             </div>
-      )
-}
+      );
+};
 
-export default JobHeroCard
+export default JobHeroCard;

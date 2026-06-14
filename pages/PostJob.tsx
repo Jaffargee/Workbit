@@ -1,25 +1,63 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/server/supabase';
+import { useAuth } from '@/contexts/authentication';
+import { Platform_, JobType } from '@/types/types';
+import { NetworkService } from '@/utils/network_service';
+import NetworkError from '@/components/NetworkError';
+
 import {
-      HelpCircle, Info, Calculator, Link,
-      Workflow, Loader2, CheckCircle, AlertCircle,
-} from "lucide-react";
-import { supabase } from "@/server/supabase";
-import { useAuth } from "@/contexts/authentication";
-import { Platform, JobPostPayload, JobType, JobStatus, Platform_ } from "@/types/types";
-import { NetworkService } from "@/utils/network_service";
-import NetworkError from "@/components/NetworkError";
-import AuthInput from "@/components/Auth/AuthInput";
-import AuthSelect from "@/components/Auth/AuthSelect";
+      makeStyles,
+      shorthands,
+      tokens,
+      Button,
+      Checkbox,
+      Combobox,
+      Dialog,
+      DialogActions,
+      DialogBody,
+      DialogContent,
+      DialogSurface,
+      DialogTitle,
+      Field,
+      Input,
+      MessageBar,
+      MessageBarBody,
+      Option,
+      Select,
+      Spinner,
+      Text,
+      Textarea,
+      InputOnChangeData,
+      SelectOnChangeData,
+} from '@fluentui/react-components';
 
-const MAX_RETRIES = 3;
+import {
+      Calculator20Regular,
+      CheckmarkCircle24Regular,
+      Warning20Regular,
+      Link20Regular,
+      ArrowRight16Regular,
+      Info16Regular,
+      AppsList20Regular,
+      Globe20Regular,
+      NumberSymbol20Regular,
+      MoneyHand20Regular,
+      CalendarClock20Regular,
+      ShieldCheckmark16Regular,
+      Camera16Regular,
+      LayerDiagonalPerson16Regular,
+      Flash16Regular,
+} from '@fluentui/react-icons';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function addDays(days: number): string {
       const d = new Date();
       d.setDate(d.getDate() + days);
       return d.toISOString();
 }
+
+const MAX_RETRIES = 3;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,129 +77,367 @@ interface PostJobForm {
       expires_in_days: number;
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const useStyles = makeStyles({
+      root: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: tokens.spacingHorizontalM,
+            ...shorthands.padding(
+                  tokens.spacingVerticalM,
+                  tokens.spacingHorizontalM
+            ),
+            '@media (min-width: 1024px)': {
+                  gridTemplateColumns: '3fr 2fr',
+            },
+      },
+
+      // ── Form card ─────────────────────────────────────────────────────────
+      formCard: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            borderRadius: tokens.borderRadiusXLarge,
+            ...shorthands.padding(
+                  tokens.spacingVerticalL,
+                  tokens.spacingHorizontalL
+            ),
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: tokens.spacingVerticalL,
+      },
+      formRow: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: tokens.spacingHorizontalM,
+            '@media (min-width: 640px)': {
+                  gridTemplateColumns: '1fr 1fr',
+            },
+      },
+      formRowSingle: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: tokens.spacingHorizontalM,
+      },
+
+      // ── Checkbox rows ─────────────────────────────────────────────────────
+      checkboxGroup: {
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: tokens.spacingVerticalS,
+      },
+      checkboxCard: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            columnGap: tokens.spacingHorizontalS,
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            borderRadius: tokens.borderRadiusMedium,
+            ...shorthands.padding(
+                  tokens.spacingVerticalS,
+                  tokens.spacingHorizontalM
+            ),
+            cursor: 'pointer',
+            transition: 'border-color 0.12s ease, background 0.12s ease',
+            ':hover': {
+                  borderColor: tokens.colorBrandStroke1,
+                  backgroundColor: tokens.colorBrandBackground2,
+            },
+      },
+      checkboxCardActive: {
+            borderColor: tokens.colorBrandStroke1,
+            backgroundColor: tokens.colorBrandBackground2,
+      },
+      checkboxMeta: {
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: '2px',
+            paddingTop: '2px',
+      },
+
+      // ── Cost summary sidebar ───────────────────────────────────────────────
+      sidebar: {
+            position: 'sticky',
+            top: '8px',
+            alignSelf: 'start',
+      },
+      costCard: {
+            background: 'linear-gradient(145deg, #1b1f2b 0%, #242938 100%)',
+            borderRadius: tokens.borderRadiusXLarge,
+            ...shorthands.padding(
+                  tokens.spacingVerticalL,
+                  tokens.spacingHorizontalL
+            ),
+            color: '#ffffff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: tokens.shadow16,
+      },
+      costGlyph: {
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            ...shorthands.padding(
+                  tokens.spacingVerticalM,
+                  tokens.spacingHorizontalM
+            ),
+            opacity: 0.05,
+            fontSize: '120px',
+            pointerEvents: 'none',
+      },
+      costTitle: {
+            display: 'flex',
+            alignItems: 'center',
+            columnGap: tokens.spacingHorizontalS,
+            marginBottom: tokens.spacingVerticalL,
+            position: 'relative',
+            zIndex: 1,
+      },
+      costRows: {
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: tokens.spacingVerticalM,
+            position: 'relative',
+            zIndex: 1,
+      },
+      costRow: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+      },
+      costDivider: {
+            height: '1px',
+            background: 'rgba(255,255,255,0.1)',
+            marginTop: tokens.spacingVerticalS,
+            marginBottom: tokens.spacingVerticalS,
+      },
+      infoSteps: {
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: tokens.spacingVerticalS,
+            marginTop: tokens.spacingVerticalL,
+            position: 'relative',
+            zIndex: 1,
+      },
+      infoStep: {
+            display: 'flex',
+            alignItems: 'center',
+            columnGap: tokens.spacingHorizontalS,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: tokens.borderRadiusMedium,
+            ...shorthands.border('1px', 'solid', 'rgba(255,255,255,0.08)'),
+            ...shorthands.padding(
+                  tokens.spacingVerticalS,
+                  tokens.spacingHorizontalM
+            ),
+      },
+      infoStepNum: {
+            width: '24px',
+            height: '24px',
+            borderRadius: tokens.borderRadiusCircular,
+            background: 'rgba(0,120,212,0.25)',
+            color: '#60a5fa',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: tokens.fontSizeBase300,
+            fontWeight: tokens.fontWeightBold,
+            flexShrink: 0,
+      },
+
+      // ── Success overlay (faux viewport — no position:fixed) ───────────────
+      successOverlayWrap: {
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...shorthands.padding(tokens.spacingVerticalM),
+      },
+      successCard: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            borderRadius: tokens.borderRadiusXLarge,
+            boxShadow: tokens.shadow64,
+            ...shorthands.padding(
+                  tokens.spacingVerticalXL,
+                  tokens.spacingHorizontalXL
+            ),
+            maxWidth: '440px',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: tokens.spacingVerticalM,
+      },
+      successHead: {
+            display: 'flex',
+            alignItems: 'center',
+            columnGap: tokens.spacingHorizontalM,
+      },
+      successIconBox: {
+            width: '44px',
+            height: '44px',
+            borderRadius: tokens.borderRadiusCircular,
+            backgroundColor: tokens.colorPaletteGreenBackground2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: tokens.colorPaletteGreenForeground1,
+      },
+      paymentBanner: {
+            backgroundColor: tokens.colorPaletteYellowBackground2,
+            ...shorthands.border(
+                  '1px',
+                  'solid',
+                  tokens.colorPaletteYellowBorderActive
+            ),
+            borderRadius: tokens.borderRadiusMedium,
+            ...shorthands.padding(
+                  tokens.spacingVerticalS,
+                  tokens.spacingHorizontalM
+            ),
+      },
+      successActions: {
+            display: 'flex',
+            columnGap: tokens.spacingHorizontalS,
+      },
+});
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const PostJob: React.FC = () => {
+      const styles = useStyles();
       const { profile } = useAuth();
+
       const [platforms, setPlatforms] = useState<Platform_[]>([]);
       const [platformError, setPlatformError] = useState('');
       const [loading, setLoading] = useState(false);
-      const [success, setSuccess] = useState<{ job_id: string; total_cost: number } | null>(null);
+      const [success, setSuccess] = useState<{
+            job_id: string;
+            total_cost: number;
+      } | null>(null);
       const [submitError, setSubmitError] = useState('');
 
       const [form, setForm] = useState<PostJobForm>({
-            platform_id:            '',
-            job_type:               'FOLLOW',
-            target_url:             '',
-            payout_amount:          150,
-            payout_currency:        'NGN',
-            auto_approve:           false,
-            requires_screenshot:    true,
-            requires_before_proof:  false,
-            proof_instructions:     '',
-            title:                  '',
-            description:            '',
-            total_slots:            10,
-            expires_in_days:        7,
+            platform_id: '',
+            job_type: 'FOLLOW',
+            target_url: '',
+            payout_amount: 150,
+            payout_currency: 'NGN',
+            auto_approve: false,
+            requires_screenshot: true,
+            requires_before_proof: false,
+            proof_instructions: '',
+            title: '',
+            description: '',
+            total_slots: 10,
+            expires_in_days: 7,
       });
 
-      const totalCost  = form.total_slots * form.payout_amount;
-      const platformFee = totalCost * 0.1;
-      const grandTotal  = totalCost + platformFee;
+      const set = <K extends keyof PostJobForm>(
+            key: K,
+            value: PostJobForm[K]
+      ) => setForm((prev) => ({ ...prev, [key]: value }));
 
-      // ── Load platforms ─────────────────────────────────────────────────────────
+      const totalCost = form.total_slots * form.payout_amount;
+      const platformFee = totalCost * 0.1;
+      const grandTotal = totalCost + platformFee;
+
+      // ── Load platforms ────────────────────────────────────────────────────
       useEffect(() => {
             const fetchPlatforms = async () => {
-                  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-
+                  const delay = (ms: number) =>
+                        new Promise((r) => setTimeout(r, ms));
                   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-                  try {
-                  if (!NetworkService.isOnline()) {
-                        setPlatformError('No internet connection.');
-                        await delay(1500);
-                        continue;
-                  }
-
-                  const { data, error } = await supabase
-                        .from('platforms')
-                        .select('*')
-                        .eq('is_active', true);
-
-                  if (error) {
-                        if (attempt === MAX_RETRIES) {
-                        setPlatformError('Could not load platforms. Please refresh the page.');
+                        try {
+                              if (!NetworkService.isOnline()) {
+                                    setPlatformError('No internet connection.');
+                                    await delay(1500);
+                                    continue;
+                              }
+                              const { data, error } = await supabase
+                                    .from('platforms')
+                                    .select('*')
+                                    .eq('is_active', true);
+                              if (error) {
+                                    if (attempt === MAX_RETRIES)
+                                          setPlatformError(
+                                                'Could not load platforms. Please refresh.'
+                                          );
+                                    await delay(1000 * attempt);
+                                    continue;
+                              }
+                              if (data?.length) {
+                                    setPlatforms(data as Platform_[]);
+                                    set('platform_id', data[0].id);
+                              }
+                              return;
+                        } catch {
+                              if (attempt === MAX_RETRIES)
+                                    setPlatformError(
+                                          'Could not load platforms. Please refresh.'
+                                    );
                         }
-                        await delay(1000 * attempt);
-                        continue;
-                  }
-
-                  if (data?.length) {
-                        setPlatforms(data as Platform_[]);
-                        setForm(prev => ({ ...prev, platform_id: data[0].id }));
-                  }
-
-                  return; // success
-                  } catch {
-                  if (attempt === MAX_RETRIES) {
-                        setPlatformError('Could not load platforms. Please refresh the page.');
-                  }
-                  }
                   }
             };
-
             fetchPlatforms();
       }, []);
 
-      // ── Submit ─────────────────────────────────────────────────────────────────
+      // ── Submit ────────────────────────────────────────────────────────────
       const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setSubmitError('');
 
-            if (!form.platform_id) {
-                  setSubmitError('Please select a platform.');
-                  return;
-            }
-            if (!form.target_url.trim()) {
-                  setSubmitError('Target URL is required.');
-                  return;
-            }
-            if (!form.title.trim()) {
-                  setSubmitError('Job title is required.');
-                  return;
-            }
+            if (!form.platform_id)
+                  return setSubmitError('Please select a platform.');
+            if (!form.target_url.trim())
+                  return setSubmitError('Target URL is required.');
+            if (!form.title.trim())
+                  return setSubmitError('Job title is required.');
 
             setLoading(true);
-
             try {
-                  // Correct way to insert directly into the table rows
-                  const { data, error } = await supabase.from('jobs').insert({
-                        user_id:               profile?.user_id, // Required by your table schema
-                        platform_id:           form.platform_id,
-                        job_type:              form.job_type,
-                        target_url:            form.target_url.trim(),
-                        payout_amount:         form.payout_amount,
-                        payout_currency:       form.payout_currency,
-                        auto_approve:          form.auto_approve,
-                        requires_screenshot:   form.requires_screenshot,
-                        requires_before_proof: form.requires_before_proof,
-                        proof_instructions:    form.proof_instructions ? form.proof_instructions.trim() : null,
-                        title:                 form.title.trim(),
-                        description:           form.description.trim(),
-                        total_slots:           form.total_slots,
-                        expires_at:            addDays(form.expires_in_days),
-                  }).select().maybeSingle();
+                  const { data, error } = await supabase
+                        .from('jobs')
+                        .insert({
+                              user_id: profile?.user_id,
+                              platform_id: form.platform_id,
+                              job_type: form.job_type,
+                              target_url: form.target_url.trim(),
+                              payout_amount: form.payout_amount,
+                              payout_currency: form.payout_currency,
+                              auto_approve: form.auto_approve,
+                              requires_screenshot: form.requires_screenshot,
+                              requires_before_proof: form.requires_before_proof,
+                              proof_instructions:
+                                    form.proof_instructions?.trim() || null,
+                              title: form.title.trim(),
+                              description: form.description.trim(),
+                              total_slots: form.total_slots,
+                              expires_at: addDays(form.expires_in_days),
+                        })
+                        .select()
+                        .maybeSingle();
 
                   if (error) {
                         setSubmitError(error.message);
                         return;
                   }
-
-                  if (data.success) {
-                        setSuccess({ job_id: data.job_id, total_cost: data.escrow_amount + data.platform_fee });
+                  if (data?.success) {
+                        setSuccess({
+                              job_id: data.job_id,
+                              total_cost:
+                                    data.escrow_amount + data.platform_fee,
+                        });
                   }
-
-            } catch (err: any) {
-                  setSubmitError('An unexpected error occurred. Please try again.');
+            } catch {
+                  setSubmitError(
+                        'An unexpected error occurred. Please try again.'
+                  );
             } finally {
                   setLoading(false);
             }
@@ -169,303 +445,664 @@ const PostJob: React.FC = () => {
 
       const resetForm = () => {
             setSuccess(null);
-            setForm(prev => ({
+            setForm((prev) => ({
                   ...prev,
-                  title: '', description: '', target_url: '',
-                  proof_instructions: '', total_slots: 10, payout_amount: 150,
+                  title: '',
+                  description: '',
+                  target_url: '',
+                  proof_instructions: '',
+                  total_slots: 10,
+                  payout_amount: 150,
             }));
       };
 
       if (!NetworkService.isOnline()) return <NetworkError />;
+      const isMobile = window.innerWidth < 640;
 
       return (
-            <div className="grid lg:grid-cols-5 gap-4 px-4 py-4">
+            <div className={styles.root}>
+                  {/* ── Form panel ── */}
+                  <div className={styles.formCard}>
+                        {/* Success overlay */}
+                        {success && (
+                              <SuccessOverlay
+                                    jobId={success.job_id}
+                                    totalCost={success.total_cost}
+                                    onReset={resetForm}
+                              />
+                        )}
 
-                  {/* ── Form ─────────────────────────────────────────────────────────── */}
-                  <div className="lg:col-span-3">
-                        <div className="bg-white p-4 md:p-6 rounded-4xl border border-slate-100">
+                        {/* Error bar */}
+                        {submitError && (
+                              <MessageBar intent="error">
+                                    <MessageBarBody>
+                                          {submitError}
+                                    </MessageBarBody>
+                              </MessageBar>
+                        )}
 
-                              {success && (
-                                    <SuccessOverlay
-                                          jobId={success.job_id}
-                                          totalCost={success.total_cost}
-                                          onReset={resetForm}
+                        <form
+                              onSubmit={handleSubmit}
+                              style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    rowGap: tokens.spacingVerticalL,
+                              }}
+                        >
+                              {/* Row 1 — Title + Platform */}
+                              <div className={styles.formRow}>
+                                    <WInput
+                                          label="Job Title"
+                                          required
+                                          placeholder="e.g., Follow my X account"
+                                          value={form.title}
+                                          onChange={(_, d) =>
+                                                set('title', d.value)
+                                          }
+                                          contentBefore={
+                                                <Info16Regular
+                                                      style={{
+                                                            color: tokens.colorNeutralForeground3,
+                                                      }}
+                                                />
+                                          }
                                     />
-                              )}
-
-                              <form onSubmit={handleSubmit} className="space-y-6">
-
-                                    {submitError && (
-                                          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                                                <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
-                                                <p className="text-red-700 text-sm">{submitError}</p>
-                                          </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                          <AuthInput
-                                                id="job_title"
-                                                name="job_title"
-                                                label="Job Title"
-                                                placeholder="e.g., Follow my X account"
-                                                icon={<HelpCircle size={14} className="text-slate-400" />}
-                                                value={form.title}
-                                                onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-                                          />
-
-                                          <AuthSelect
-                                                label="Platform"
-                                                name="platform"
-                                                id="platform"
-                                                icon={<Info size={14} className="text-slate-400" />}
+                                    <Field
+                                          label="Platform"
+                                          required
+                                          validationState={
+                                                platformError ? 'error' : 'none'
+                                          }
+                                          validationMessage={
+                                                platformError || undefined
+                                          }
+                                    >
+                                          <Select
+                                                size={isMobile ? "large" : "medium"}
                                                 value={form.platform_id}
-                                                options={platforms.map(p => ({ value: p.id, data: p.name }))}
-                                                onChange={e => setForm(prev => ({ ...prev, platform_id: e.target.value }))}
-                                                error={platformError}
-                                          />
-                                    </div>
+                                                onChange={(_, d) =>
+                                                      set(
+                                                            'platform_id',
+                                                            d.value
+                                                      )
+                                                }
+                                          >
+                                                {platforms.map((p) => (
+                                                      <option
+                                                            key={p.id}
+                                                            value={p.id}
+                                                      >
+                                                            {p.name}
+                                                      </option>
+                                                ))}
+                                          </Select>
+                                    </Field>
+                              </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                          <AuthInput
-                                                id="target_url"
-                                                name="target_url"
-                                                label="Target URL"
-                                                type="url"
-                                                placeholder="https://x.com/yourprofile"
-                                                icon={<Link size={14} className="text-slate-400" />}
-                                                value={form.target_url}
-                                                onChange={e => setForm(prev => ({ ...prev, target_url: e.target.value }))}
-                                          />
+                              {/* Row 2 — Target URL + Task Type */}
+                              <div className={styles.formRow}>
+                                    <WInput
+                                          label="Target URL"
+                                          required
+                                          type="url"
+                                          placeholder="https://x.com/yourprofile"
+                                          value={form.target_url}
+                                          onChange={(_, d) =>
+                                                set('target_url', d.value)
+                                          }
+                                          contentBefore={
+                                                <Link20Regular
+                                                      style={{
+                                                            color: tokens.colorNeutralForeground3,
+                                                      }}
+                                                />
+                                          }
+                                    />
+                                    <WSelect
+                                          options={[
+                                                {
+                                                      value: 'FOLLOW',
+                                                      label: 'Follow',
+                                                },
+                                                {
+                                                      value: 'LIKE',
+                                                      label: 'Like',
+                                                },
+                                                {
+                                                      value: 'COMMENT',
+                                                      label: 'Comment',
+                                                },
+                                                {
+                                                      value: 'RETWEET',
+                                                      label: 'Retweet',
+                                                },
+                                                {
+                                                      value: 'SAVE',
+                                                      label: 'Save',
+                                                },
+                                                {
+                                                      value: 'SHARE',
+                                                      label: 'Share',
+                                                },
+                                          ]}
+                                          label="Task Type"
+                                          value={form.job_type}
+                                          onChange={(_, d) =>
+                                                set(
+                                                      'job_type',
+                                                      d.value as JobType
+                                                )
+                                          }
+                                    />
+                              </div>
 
-                                          <AuthSelect
-                                                label="Task Type"
-                                                name="job_type"
-                                                id="job_type"
-                                                icon={<Workflow size={14} className="text-slate-400" />}
-                                                value={form.job_type}
-                                                options={[
-                                                      { value: 'FOLLOW',  data: 'Follow' },
-                                                      { value: 'LIKE',    data: 'Like' },
-                                                      { value: 'COMMENT', data: 'Comment' },
-                                                      { value: 'RETWEET', data: 'Retweet' },
-                                                      { value: 'SAVE',    data: 'Save' },
-                                                      { value: 'SHARE',   data: 'Share' },
-                                                ]}
-                                                onChange={e => setForm(prev => ({ ...prev, job_type: e.target.value as JobType }))}
-                                          />
-                                    </div>
+                              {/* Row 3 — Slots + Payout + Expiry */}
+                              <div className={styles.formRowSingle}>
+                                    <WInput
+                                          label="Target URL"
+                                          required
+                                          type="number"
+                                          placeholder="10"
+                                          value={String(form.total_slots)}
+                                          onChange={(_, d) =>
+                                                set(
+                                                      'total_slots',
+                                                      Math.max(
+                                                            1,
+                                                            parseInt(d.value) ||
+                                                                  1
+                                                      )
+                                                )
+                                          }
+                                          contentBefore={
+                                                <NumberSymbol20Regular
+                                                      style={{
+                                                            color: tokens.colorNeutralForeground3,
+                                                      }}
+                                                />
+                                          }
+                                    />
+                                    <WInput
+                                          label="Payout per Task (₦)"
+                                          required
+                                          type="number"
+                                          placeholder="150"
+                                          value={String(form.payout_amount)}
+                                          onChange={(_, d) =>
+                                                set(
+                                                      'payout_amount',
+                                                      Math.max(
+                                                            1,
+                                                            parseInt(d.value) ||
+                                                                  1
+                                                      )
+                                                )
+                                          }
+                                          contentBefore={
+                                                <MoneyHand20Regular
+                                                      style={{
+                                                            color: tokens.colorNeutralForeground3,
+                                                      }}
+                                                />
+                                          }
+                                    />
+                                    <WSelect
+                                          options={[
+                                                { value: '1', label: '1 day' },
+                                                { value: '3', label: '3 days' },
+                                                { value: '7', label: '7 days' },
+                                                {
+                                                      value: '14',
+                                                      label: '14 days',
+                                                },
+                                                {
+                                                      value: '30',
+                                                      label: '30 days',
+                                                },
+                                          ]}
+                                          label="Expires In"
+                                          value={String(form.expires_in_days)}
+                                          onChange={(_, d) =>
+                                                set(
+                                                      'expires_in_days',
+                                                      parseInt(d.value)
+                                                )
+                                          }
+                                    />
+                              </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-1 gap-5">
-                                          <AuthInput
-                                                name="total_slots"
-                                                id="total_slots"
-                                                label="Worker Slots"
-                                                type="number"
-                                                placeholder="10"
-                                                icon={<Info size={14} className="text-slate-400" />}
-                                                value={form.total_slots}
-                                                onChange={e => setForm(prev => ({
-                                                      ...prev, total_slots: Math.max(1, parseInt(e.target.value) || 1),
-                                                }))}
-                                          />
+                              {/* Description */}
+                              <Field label="Task Description" required>
+                                    <Textarea
+                                          placeholder="List steps clearly: 1. Go to… 2. Click Follow… 3. Screenshot…"
+                                          value={form.description}
+                                          onChange={(_, d) =>
+                                                set('description', d.value)
+                                          }
+                                          resize="vertical"
+                                          rows={4}
+                                    />
+                              </Field>
 
-                                          <AuthInput
-                                                name="payout_amount"
-                                                id="payout_amount"
-                                                label="Payout per Task (₦)"
-                                                type="number"
-                                                placeholder="150"
-                                                icon={<Info size={14} className="text-slate-400" />}
-                                                value={form.payout_amount}
-                                                onChange={e => setForm(prev => ({
-                                                      ...prev, payout_amount: Math.max(1, parseInt(e.target.value) || 1),
-                                                }))}
-                                          />
+                              {/* Proof Instructions */}
+                              <Field label="Proof Requirements">
+                                    <Textarea
+                                          placeholder="e.g., Screenshot showing you've followed the account + your username"
+                                          value={form.proof_instructions}
+                                          onChange={(_, d) =>
+                                                set(
+                                                      'proof_instructions',
+                                                      d.value
+                                                )
+                                          }
+                                          resize="vertical"
+                                          rows={3}
+                                    />
+                              </Field>
 
-                                          <AuthSelect
-                                                label="Expires In"
-                                                name="expires_in_days"
-                                                id="expires_in_days"
-                                                value={String(form.expires_in_days)}
-                                                options={[
-                                                      { value: '1',  data: '1 day' },
-                                                      { value: '3',  data: '3 days' },
-                                                      { value: '7',  data: '7 days' },
-                                                      { value: '14', data: '14 days' },
-                                                      { value: '30', data: '30 days' },
-                                                ]}
-                                                onChange={e => setForm(prev => ({ ...prev, expires_in_days: parseInt(e.target.value) }))}
-                                          />
-                                    </div>
+                              {/* Toggles */}
+                              <div className={styles.checkboxGroup}>
+                                    <CheckboxCard
+                                          icon={<Camera16Regular />}
+                                          label="Require Screenshot Proof"
+                                          description="Workers must upload a screenshot as proof."
+                                          checked={form.requires_screenshot}
+                                          onChange={(v) =>
+                                                set('requires_screenshot', v)
+                                          }
+                                    />
+                                    <CheckboxCard
+                                          icon={
+                                                <LayerDiagonalPerson16Regular />
+                                          }
+                                          label="Require Before & After Screenshots"
+                                          description="Workers must show state before and after completing the task."
+                                          checked={form.requires_before_proof}
+                                          onChange={(v) =>
+                                                set('requires_before_proof', v)
+                                          }
+                                    />
+                                    <CheckboxCard
+                                          icon={<Flash16Regular />}
+                                          label="Auto-Approve Submissions"
+                                          description="Pay workers automatically without manual review. Higher fraud risk."
+                                          checked={form.auto_approve}
+                                          onChange={(v) =>
+                                                set('auto_approve', v)
+                                          }
+                                    />
+                              </div>
 
-                                    {/* Description */}
-                                    <div className="space-y-2">
-                                          <div className="text-sm font-bold text-slate-700">Task Description</div>
-                                          <textarea
-                                                required
-                                                placeholder="List steps clearly: 1. Go to... 2. Click Follow... 3. Screenshot…"
-                                                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-blue-500 min-h-[100px] text-sm"
-                                                value={form.description}
-                                                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                                          />
-                                    </div>
-
-                                    {/* Proof Instructions */}
-                                    <div className="space-y-2">
-                                          <div className="text-sm font-bold text-slate-700">Proof Requirements</div>
-                                          <textarea
-                                                placeholder="e.g., Screenshot showing you've followed the account + your username"
-                                                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-blue-500 min-h-[80px] text-sm"
-                                                value={form.proof_instructions}
-                                                onChange={e => setForm(prev => ({ ...prev, proof_instructions: e.target.value }))}
-                                          />
-                                    </div>
-
-                                    {/* Toggles */}
-                                    <div className="space-y-3">
-                                          <PostJobCheckbox
-                                                idname="requires_screenshot"
-                                                label="Require Screenshot Proof"
-                                                description="Workers must upload a screenshot as proof."
-                                                checked={form.requires_screenshot}
-                                                onChange={e => setForm(prev => ({ ...prev, requires_screenshot: e.target.checked }))}
-                                          />
-                                          <PostJobCheckbox
-                                                idname="requires_before_proof"
-                                                label="Require Before & After Screenshots"
-                                                description="Workers must show state before and after completing the task."
-                                                checked={form.requires_before_proof}
-                                                onChange={e => setForm(prev => ({ ...prev, requires_before_proof: e.target.checked }))}
-                                          />
-                                          <PostJobCheckbox
-                                                idname="auto_approve"
-                                                label="Auto-Approve Submissions"
-                                                description="Pay workers automatically without manual review. Higher fraud risk."
-                                                checked={form.auto_approve}
-                                                onChange={e => setForm(prev => ({ ...prev, auto_approve: e.target.checked }))}
-                                          />
-                                    </div>
-
-                                    <button type="submit" disabled={loading || platforms.length === 0} className="w-full cursor-pointer bg-blue-600 text-white py-3 rounded-full text-base hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" >
-                                          {loading ? (
-                                                <><Loader2 size={20} className="animate-spin" /> Posting Job…</>
-                                          ) : (
-                                                'Create Job'
-                                          )}
-                                    </button>
-
-                              </form>
-
-                        </div>
+                              {/* Submit */}
+                              <Button
+                                    type="submit"
+                                    appearance="primary"
+                                    size="large"
+                                    disabled={loading || platforms.length === 0}
+                                    icon={
+                                          loading ? (
+                                                <Spinner size="tiny" />
+                                          ) : undefined
+                                    }
+                                    style={{
+                                          width: '100%',
+                                          borderRadius:
+                                                tokens.borderRadiusCircular,
+                                          height: '44px',
+                                          fontWeight: tokens.fontWeightSemibold,
+                                    }}
+                              >
+                                    {loading ? 'Posting Job…' : 'Create Job'}
+                              </Button>
+                        </form>
                   </div>
 
-                  {/* ── Cost Summary ─────────────────────────────────────────────────── */}
-                  <div className="lg:col-span-2 space-y-4">
-                        <div className="bg-slate-900 text-white p-6 rounded-4xl shadow-lg relative overflow-hidden sticky top-2">
-                              <div className="absolute top-0 right-0 p-4 opacity-5">
-                                    <Calculator size={120} />
-                              </div>
-                              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 relative z-10">
-                                    <Calculator size={18} className="text-blue-400" /> Cost Summary
-                              </h3>
+                  {/* ── Cost summary sidebar ── */}
+                  <div className={styles.sidebar}>
+                        <div className={styles.costCard}>
+                              <span className={styles.costGlyph} aria-hidden>
+                                    <Calculator20Regular />
+                              </span>
 
-                              <div className="space-y-4 relative z-10">
-                                    <CostRow label="Task Cost" value={`₦${totalCost.toLocaleString()}`} />
-                                    <CostRow label="Platform Fee (10%)" value={`₦${platformFee.toLocaleString()}`} />
-                                    <div className="pt-4 border-t border-slate-700 flex justify-between items-center">
-                                          <span className="text-lg font-bold">Total Due</span>
-                                          <span className="text-2xl font-black text-blue-400">₦{grandTotal.toLocaleString()}</span>
+                              <div className={styles.costTitle}>
+                                    <Calculator20Regular
+                                          style={{
+                                                color: '#60a5fa',
+                                                fontSize: 20,
+                                          }}
+                                    />
+                                    <Text
+                                          size={400}
+                                          weight="semibold"
+                                          style={{ color: '#ffffff' }}
+                                    >
+                                          Cost Summary
+                                    </Text>
+                              </div>
+
+                              <div className={styles.costRows}>
+                                    <CostRow
+                                          label="Task Cost"
+                                          value={`₦${totalCost.toLocaleString()}`}
+                                    />
+                                    <CostRow
+                                          label="Platform Fee (10%)"
+                                          value={`₦${platformFee.toLocaleString()}`}
+                                    />
+                                    <div className={styles.costDivider} />
+                                    <div className={styles.costRow}>
+                                          <Text
+                                                size={400}
+                                                weight="bold"
+                                                style={{ color: '#ffffff' }}
+                                          >
+                                                Total Due
+                                          </Text>
+                                          <Text
+                                                size={600}
+                                                weight="bold"
+                                                style={{ color: '#60a5fa' }}
+                                          >
+                                                ₦{grandTotal.toLocaleString()}
+                                          </Text>
                                     </div>
                               </div>
 
-                              <div className="mt-6 space-y-3 relative z-10">
-                                    <InfoStep n={1} text="Your job is reviewed for safety before going live." />
-                                    <InfoStep n={2} text="Funds are held in escrow until each proof is approved." />
-                                    <InfoStep n={3} text="Unused slots are refunded if the campaign ends early." />
+                              <div className={styles.infoSteps}>
+                                    <InfoStep
+                                          n={1}
+                                          text="Your job is reviewed for safety before going live."
+                                    />
+                                    <InfoStep
+                                          n={2}
+                                          text="Funds are held in escrow until each proof is approved."
+                                    />
+                                    <InfoStep
+                                          n={3}
+                                          text="Unused slots are refunded if the campaign ends early."
+                                    />
                               </div>
-
-                              {/* Launch/Fund JOB button. */}
-                              {/* <div className="flex flex-row w-full relative mt-4 items-center">
-                                    <div className="flex h-full w-full relative">
-                                          <button onClick={handleJobFunding} className="cursor-pointer w-full relative border border-blue-600 hover:bg-blue-600 transition-all bg-blue-700 outline-none rounded-full">
-                                                <div className="h-full w-full relative items-center justify-center px-4 py-2">
-                                                      <span className="text-slate-200 text-md">Fund & Launch Campaign</span>
-                                                </div>
-                                          </button>
-                                    </div>
-                              </div> */}
-
                         </div>
                   </div>
-
             </div>
       );
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+const WInput: React.FC<{
+      contentBefore?: React.ReactNode | any;
+      label: string;
+      type?:
+            | 'number'
+            | 'search'
+            | 'text'
+            | 'time'
+            | 'email'
+            | 'password'
+            | 'tel'
+            | 'url'
+            | 'date'
+            | 'datetime-local'
+            | 'month'
+            | 'week'
+            | undefined;
+      value: string;
+      onChange?:
+            | ((
+                    ev: React.ChangeEvent<HTMLInputElement>,
+                    data: InputOnChangeData
+              ) => void)
+            | undefined;
+      placeholder?: string;
+      required?: boolean;
+}> = ({
+      contentBefore,
+      label,
+      type = 'text',
+      value,
+      onChange,
+      placeholder,
+      required,
+}) => {
+      const isMobile = window.innerWidth < 640;
+      return (
+            <Field label={label} required={required}>
+                  <Input
+                        type={type}
+                        size={isMobile ? 'large' : 'medium'}
+                        placeholder={placeholder}
+                        contentBefore={contentBefore}
+                        value={value}
+                        onChange={onChange}
+                  />
+            </Field>
+      );
+};
+const WSelect: React.FC<{
+      options: { value: string; label: string }[] | any[];
+      label: string;
+      value: string;
+      onChange?:
+            | ((
+                    ev: React.ChangeEvent<HTMLSelectElement>,
+                    data: SelectOnChangeData
+              ) => void)
+            | undefined;
+      placeholder?: string;
+      required?: boolean;
+}> = ({ label, options, value, onChange, required, ...rest }) => {
+      const isMobile = window.innerWidth < 640;
+      return (
+            <Field label={label} required={required} {...rest}>
+                  <Select
+                        size={isMobile ? 'large' : 'medium'}
+                        value={String(value)}
+                        onChange={onChange}
+                  >
+                        {options.map((o: { value: string; label: string }) => (
+                              <option key={o.value} value={o.value}>
+                                    {o.label}
+                              </option>
+                        ))}
+                  </Select>
+            </Field>
+      );
+};
 
-const CostRow = ({ label, value }: { label: string; value: string }) => (
-      <div className="flex justify-between items-center text-slate-400">
-            <span>{label}</span>
-            <span className="text-white font-medium">{value}</span>
-      </div>
-);
-
-const InfoStep = ({ n, text }: { n: number; text: string }) => (
-      <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/10">
-            <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
-                  {n}
+const CostRow: React.FC<{ label: string; value: string }> = ({
+      label,
+      value,
+}) => {
+      const styles = useStyles();
+      return (
+            <div className={styles.costRow}>
+                  <Text size={300} style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        {label}
+                  </Text>
+                  <Text
+                        size={300}
+                        weight="semibold"
+                        style={{ color: '#ffffff' }}
+                  >
+                        {value}
+                  </Text>
             </div>
-            <p className="text-xs text-slate-300">{text}</p>
-      </div>
-);
+      );
+};
 
-const PostJobCheckbox = ({ label, description, idname, checked, onChange }: { label: string; description?: string; idname: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
-      <label htmlFor={idname} className="flex items-start gap-3 cursor-pointer group">
-            <input
-                  type="checkbox"
-                  id={idname}
-                  name={idname}
-                  checked={checked}
-                  onChange={onChange}
-                  className="mt-0.5 h-4 w-4 rounded accent-blue-600"
-            />
-            <div>
-                  <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{label}</p>
-                  {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
+const InfoStep: React.FC<{ n: number; text: string }> = ({ n, text }) => {
+      const styles = useStyles();
+      return (
+            <div className={styles.infoStep}>
+                  <div className={styles.infoStepNum}>{n}</div>
+                  <Text
+                        size={300}
+                        style={{
+                              color: 'rgba(221, 221, 221, 0.6)',
+                              lineHeight: tokens.lineHeightBase200,
+                        }}
+                  >
+                        {text}
+                  </Text>
             </div>
-      </label>
-);
+      );
+};
 
-const SuccessOverlay = ({ jobId, totalCost, onReset }: { jobId: string; totalCost: number; onReset: () => void; }) => (
-      <div className="fixed inset-0 backdrop-blur-sm bg-black/20 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full space-y-5">
-                  <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <CheckCircle size={20} className="text-green-600" />
+const CheckboxCard: React.FC<{
+      icon: React.ReactNode;
+      label: string;
+      description?: string;
+      checked: boolean;
+      onChange: (checked: boolean) => void;
+}> = ({ icon, label, description, checked, onChange }) => {
+      const styles = useStyles();
+      return (
+            <div
+                  className={`${styles.checkboxCard} ${checked ? styles.checkboxCardActive : ''}`}
+                  onClick={() => onChange(!checked)}
+            >
+                  <Checkbox
+                        checked={checked}
+                        onChange={(_, d) => onChange(!!d.checked)}
+                        onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className={styles.checkboxMeta}>
+                        <div
+                              style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    columnGap: 6,
+                              }}
+                        >
+                              <span
+                                    style={{
+                                          color: checked
+                                                ? tokens.colorBrandForeground1
+                                                : tokens.colorNeutralForeground3,
+                                          fontSize: 14,
+                                          display: 'flex',
+                                    }}
+                              >
+                                    {icon}
+                              </span>
+                              <Text
+                                    size={200}
+                                    weight="semibold"
+                                    style={{
+                                          color: checked
+                                                ? tokens.colorBrandForeground1
+                                                : tokens.colorNeutralForeground1,
+                                    }}
+                              >
+                                    {label}
+                              </Text>
                         </div>
-                        <div>
-                              <p className="font-bold text-slate-900">Job posted successfully!</p>
-                              <p className="text-xs text-slate-400">ID: {jobId.slice(0, 8)}…</p>
-                        </div>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                        <p className="text-sm text-amber-800 font-semibold">Payment Required</p>
-                        <p className="text-xs text-amber-700 mt-1">
-                              Your job is pending. Pay <strong>₦{totalCost.toLocaleString()}</strong> to activate it
-                              and make it visible to workers.
-                        </p>
-                  </div>
-                  <div className="flex gap-3">
-                        <button onClick={onReset} className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-full font-semibold hover:bg-slate-200 transition-colors text-sm" >
-                              Post another
-                        </button>
-                        <button onClick={() => window.location.href = '/dashboard/jobs'} className="flex-1 py-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors text-sm" >
-                              View my jobs
-                        </button>
+                        {description && (
+                              <Text
+                                    size={100}
+                                    style={{
+                                          color: tokens.colorNeutralForeground3,
+                                    }}
+                              >
+                                    {description}
+                              </Text>
+                        )}
                   </div>
             </div>
-      </div>
-);
+      );
+};
+
+const SuccessOverlay: React.FC<{
+      jobId: string;
+      totalCost: number;
+      onReset: () => void;
+}> = ({ jobId, totalCost, onReset }) => {
+      const styles = useStyles();
+      return (
+            <div className={styles.successOverlayWrap}>
+                  <div className={styles.successCard}>
+                        <div className={styles.successHead}>
+                              <div className={styles.successIconBox}>
+                                    <CheckmarkCircle24Regular
+                                          style={{ fontSize: 22 }}
+                                    />
+                              </div>
+                              <div>
+                                    <Text size={300} weight="semibold" block>
+                                          Job posted successfully!
+                                    </Text>
+                                    <Text
+                                          size={100}
+                                          style={{
+                                                color: tokens.colorNeutralForeground3,
+                                          }}
+                                    >
+                                          ID: {jobId.slice(0, 8)}…
+                                    </Text>
+                              </div>
+                        </div>
+
+                        <div className={styles.paymentBanner}>
+                              <Text
+                                    size={200}
+                                    weight="semibold"
+                                    style={{
+                                          color: tokens.colorPaletteYellowForeground2,
+                                          display: 'block',
+                                    }}
+                              >
+                                    Payment Required
+                              </Text>
+                              <Text
+                                    size={100}
+                                    style={{
+                                          color: tokens.colorPaletteYellowForeground2,
+                                          marginTop: 4,
+                                          display: 'block',
+                                          lineHeight: tokens.lineHeightBase200,
+                                    }}
+                              >
+                                    Your job is pending. Pay{' '}
+                                    <strong>
+                                          ₦{totalCost.toLocaleString()}
+                                    </strong>{' '}
+                                    to activate it and make it visible to
+                                    workers.
+                              </Text>
+                        </div>
+
+                        <div className={styles.successActions}>
+                              <Button
+                                    appearance="secondary"
+                                    style={{
+                                          flex: 1,
+                                          borderRadius:
+                                                tokens.borderRadiusCircular,
+                                    }}
+                                    onClick={onReset}
+                              >
+                                    Post another
+                              </Button>
+                              <Button
+                                    appearance="primary"
+                                    style={{
+                                          flex: 1,
+                                          borderRadius:
+                                                tokens.borderRadiusCircular,
+                                    }}
+                                    icon={<ArrowRight16Regular />}
+                                    iconPosition="after"
+                                    onClick={() =>
+                                          (window.location.href =
+                                                '/dashboard/jobs')
+                                    }
+                              >
+                                    View my jobs
+                              </Button>
+                        </div>
+                  </div>
+            </div>
+      );
+};
 
 export default PostJob;

@@ -221,7 +221,8 @@ const JobDir: React.FC = () => {
             }
 
             setJob(j);
-            if (platformsRes.data) setPlatforms(platformsRes.data as Platform[]);
+            if (platformsRes.data)
+                  setPlatforms(platformsRes.data as Platform[]);
             if (walletRes.data) setWallet(walletRes.data as WalletInfo);
 
             // Load funding separately — may not exist for DRAFT jobs
@@ -232,7 +233,6 @@ const JobDir: React.FC = () => {
                   .maybeSingle();
 
             console.log(funding);
-            
 
             if (fundingData) setFunding(fundingData as Funding);
 

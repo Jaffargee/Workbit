@@ -1,5 +1,5 @@
-import React from "react";
-import { Logo } from "../components/Logo";
+import React from 'react';
+import { Logo } from '../components/Logo';
 import {
       ArrowRight,
       CheckCircle,
@@ -9,18 +9,16 @@ import {
       Users,
       Target,
       BarChart3,
-} from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/authentication";
-
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/authentication';
 
 const LandingPage: React.FC = () => {
-
       const stats = [
-            { label: "Active Jobs", value: "2.5k+" },
-            { label: "Total Workers", value: "150k+" },
-            { label: "Total Payouts", value: "₦45M+" },
-            { label: "Trust Score", value: "99.9%" },
+            { label: 'Active Jobs', value: '2.5k+' },
+            { label: 'Total Workers', value: '150k+' },
+            { label: 'Total Payouts', value: '₦45M+' },
+            { label: 'Trust Score', value: '99.9%' },
       ];
 
       const { isAuthenticated } = { isAuthenticated: false }; // Replace with actual auth logic
@@ -35,23 +33,39 @@ const LandingPage: React.FC = () => {
                                     <div className="block relative w-full h-full">
                                           <ul className="flex gap-6 h-full">
                                                 <li className="inline-block mx-2 h-full">
-                                                      <a href="#how-it-works" className="hover:text-blue-600 transition-colors">
+                                                      <a
+                                                            href="#how-it-works"
+                                                            className="hover:text-blue-600 transition-colors"
+                                                      >
                                                             <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>How it Works</span>
+                                                                  <span>
+                                                                        How it
+                                                                        Works
+                                                                  </span>
                                                             </div>
                                                       </a>
                                                 </li>
                                                 <li className="inline-block mx-2 h-full">
-                                                      <a href="#pricing" className="hover:text-blue-600 transition-colors">
+                                                      <a
+                                                            href="#pricing"
+                                                            className="hover:text-blue-600 transition-colors"
+                                                      >
                                                             <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>Pricing</span>
+                                                                  <span>
+                                                                        Pricing
+                                                                  </span>
                                                             </div>
                                                       </a>
                                                 </li>
                                                 <li className="inline-block mx-2 h-full">
-                                                      <a href="#features" className="hover:text-blue-600 transition-colors">
+                                                      <a
+                                                            href="#features"
+                                                            className="hover:text-blue-600 transition-colors"
+                                                      >
                                                             <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>Features</span>
+                                                                  <span>
+                                                                        Features
+                                                                  </span>
                                                             </div>
                                                       </a>
                                                 </li>
@@ -68,13 +82,17 @@ const LandingPage: React.FC = () => {
                               <div className="space-y-8 text-center justify-center w-full">
                                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm">
                                           <Zap size={16} />
-                                          <span>Join the 1st Micro-Job Communityin Nigeria</span>
+                                          <span>
+                                                Join the 1st Micro-Job
+                                                Communityin Nigeria
+                                          </span>
                                     </div>
                                     <h1 className="text-5xl lg:text-7xl font-bold text-slate-900 leading-[1.1]">
                                           Earn Daily with <br />
                                           <span className="text-blue-600">
                                                 Simple Social Media
-                                          </span>{" "} Tasks
+                                          </span>{' '}
+                                          Tasks
                                     </h1>
                                     <p className="text-lg text-slate-600 leading-relaxed max-w-lg mx-auto">
                                           Follow, Like, Subscribe, and Share. We
@@ -84,10 +102,14 @@ const LandingPage: React.FC = () => {
                                     </p>
                                     <div className="flex flex-col sm:flex-row w-full justify-center gap-4 pt-4">
                                           <Link
-                                                to={isAuthenticated ? "/dashboard" : "/auth/signup"}
+                                                to={
+                                                      isAuthenticated
+                                                            ? '/dashboard'
+                                                            : '/auth/signup'
+                                                }
                                                 className="bg-blue-600 border border-slate-600 shadow-lg shadow-blue-200 border-1 text-white px-8 py-3 rounded-full font-semibold text-md hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                                           >
-                                                Start Earning Now{" "}
+                                                Start Earning Now{' '}
                                                 <ArrowRight size={20} />
                                           </Link>
                                           <Link
@@ -148,8 +170,8 @@ const LandingPage: React.FC = () => {
                               <div className="grid md:grid-cols-3 gap-12">
                                     {[
                                           {
-                                                title: "Create Account",
-                                                desc: "Sign up for free and activate your dashboard in seconds.",
+                                                title: 'Create Account',
+                                                desc: 'Sign up for free and activate your dashboard in seconds.',
                                                 icon: (
                                                       <Users
                                                             className="text-blue-600"
@@ -158,8 +180,8 @@ const LandingPage: React.FC = () => {
                                                 ),
                                           },
                                           {
-                                                title: "Browse & Perform",
-                                                desc: "Choose from hundreds of social media tasks that match your profile.",
+                                                title: 'Browse & Perform',
+                                                desc: 'Choose from hundreds of social media tasks that match your profile.',
                                                 icon: (
                                                       <Target
                                                             className="text-blue-600"
@@ -168,8 +190,8 @@ const LandingPage: React.FC = () => {
                                                 ),
                                           },
                                           {
-                                                title: "Get Paid",
-                                                desc: "Once your proof is approved, your wallet is credited instantly.",
+                                                title: 'Get Paid',
+                                                desc: 'Once your proof is approved, your wallet is credited instantly.',
                                                 icon: (
                                                       <CheckCircle
                                                             className="text-blue-600"
@@ -221,10 +243,10 @@ const LandingPage: React.FC = () => {
                                     </p>
                                     <div className="space-y-4">
                                           {[
-                                                "Unlimited Job Access",
-                                                "Priority Payouts",
-                                                "Referral Bonuses (₦500)",
-                                                "24/7 Support",
+                                                'Unlimited Job Access',
+                                                'Priority Payouts',
+                                                'Referral Bonuses (₦500)',
+                                                '24/7 Support',
                                           ].map((feat, i) => (
                                                 <div
                                                       key={i}
@@ -380,20 +402,32 @@ const LandingPage: React.FC = () => {
 };
 
 const AuthTypeLoggedInORNot: React.FC = () => {
-
       const { isAuthenticated } = useAuth(); // Replace with actual auth logic
 
-      return (
-            isAuthenticated ? (
-                  <div className="flex items-center gap-4">
-                        <Link to="/dashboard" className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">Go to Dashboard</Link>
-                  </div>
-            ) : (
-                  <div className="flex items-center gap-4">
-                        <Link to="/auth/login" className="text-slate-600 font-semibold px-4 py-2 hover:text-blue-600 transition-colors">Login</Link>
-                        <Link to="/auth/signup" className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">Get Started</Link>
-                  </div>
-            )
+      return isAuthenticated ? (
+            <div className="flex items-center gap-4">
+                  <Link
+                        to="/dashboard"
+                        className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  >
+                        Go to Dashboard
+                  </Link>
+            </div>
+      ) : (
+            <div className="flex items-center gap-4">
+                  <Link
+                        to="/auth/login"
+                        className="text-slate-600 font-semibold px-4 py-2 hover:text-blue-600 transition-colors"
+                  >
+                        Login
+                  </Link>
+                  <Link
+                        to="/auth/signup"
+                        className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  >
+                        Get Started
+                  </Link>
+            </div>
       );
 };
 

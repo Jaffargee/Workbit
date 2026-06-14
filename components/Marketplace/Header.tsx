@@ -1,12 +1,14 @@
-import { JobData } from "@/types/types";
-import { ArrowLeft, Clock, Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { JobData } from '@/types/types';
+import { ArrowLeft, Clock, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Header = ({ job }: { job: JobData }) => {
       return (
             <div className="flex items-center justify-between max-sm:flex-col max-sm:items-start space-y-2">
-                  
-                  <Link to={"/marketplace"} className="flex items-center gap-2 rounded-full px-4 py-2 hover:bg-gray-200 text-slate-500 font-bold hover:text-blue-600 transition-colors overflow-hidden" >
+                  <Link
+                        to={'/marketplace'}
+                        className="flex items-center gap-2 rounded-full px-4 py-2 hover:bg-gray-200 text-slate-500 font-bold hover:text-blue-600 transition-colors overflow-hidden"
+                  >
                         <div className="flex flex-row items-center w-full h-full relative gap-2">
                               <span>
                                     <ArrowLeft size={20} />
@@ -30,8 +32,10 @@ const Header = ({ job }: { job: JobData }) => {
                                           <Clock size={14} />
                                     </span>
                                     <span>
-                                          Posted{" "}
-                                          {new Date(job.posted_at).toLocaleDateString()}
+                                          Posted{' '}
+                                          {new Date(
+                                                job.posted_at
+                                          ).toLocaleDateString()}
                                     </span>
                               </div>
                         </div>

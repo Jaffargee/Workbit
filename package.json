@@ -9,8 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fluentui/react": "^8.125.6",
+    "@fluentui/react-components": "^9.74.1",
+    "@material/web": "^2.4.1",
+    "@mui/icons-material": "^9.0.1",
+    "@mui/material": "^9.0.1",
     "@supabase/supabase-js": "^2.89.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "actify": "^0.5.7",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.2.0",

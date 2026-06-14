@@ -1,9 +1,7 @@
-import React from 'react'
+import React from 'react';
 
 const NetworkError = () => {
-      return (
-            <div>NetworkError</div>
-      )
-}
+      return <div>NetworkError</div>;
+};
 
-export default NetworkError
+export default NetworkError;

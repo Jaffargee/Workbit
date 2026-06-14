@@ -8,13 +8,13 @@ import AuthProvider from './contexts/authentication';
 import { Layout } from './components/Layout';
 import PostJob from './pages/PostJob';
 import Wallet from './pages/Wallet';
-import { AppProvider } from './AppContext';
 import Marketplace from './pages/Marketplace';
 import Job from './pages/Marketplace/Job';
 import ProtectedRoutes from './contexts/protected_routes';
 import Verified from './pages/Auth/Verified';
 import JobVerification from './pages/Marketplace/JobVerification';
 import JobDir from './pages/Marketplace/JobDir';
+import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 
 const RenderLayout = ({ element }: { element: React.ReactNode }) => {
       return <Layout>{element}</Layout>
@@ -23,7 +23,7 @@ const RenderLayout = ({ element }: { element: React.ReactNode }) => {
 const App: React.FC = () => {
       return (
             <AuthProvider>
-                  <AppProvider> 
+                  <FluentProvider theme={webLightTheme}>
                         <Routes>
                               <Route path="/" element={<LandingPage />} />
                               <Route path="/auth/signup" element={<Auth type="register" />} />
@@ -68,7 +68,7 @@ const App: React.FC = () => {
                                     </ProtectedRoutes>
                               } />} />
                         </Routes>
-                  </AppProvider>
+                  </FluentProvider>
             </AuthProvider>
       );
 };
