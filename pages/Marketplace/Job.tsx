@@ -1,834 +1,3 @@
-// import React, { useState, useEffect, useMemo } from "react";
-// import { useApp } from "../../AppContext";
-// import {
-//       ArrowLeft,
-//       ExternalLink,
-//       CheckCircle2,
-//       AlertCircle,
-//       Clock,
-//       Users,
-//       Zap,
-//       ShieldCheck,
-//       UploadCloud,
-//       Eye,
-//       Camera,
-//       Check,
-//       FileText,
-// } from "lucide-react";
-// import { useParams } from "react-router-dom";
-// import { supabase } from "@/server/supabase";
-// import { useAuth } from "@/contexts/authentication";
-
-// import { JobApplication, ProofItemPayload, ProofType, UserProfile } from "@/types/types";
-
-// // Platform structure matching your DB relation schemas
-// interface Platform {
-//       name: string;
-//       logo_url: string;
-// }
-
-// // Full Type definitions strictly aligned with public.jobs PostgreSQL table parameters
-// interface Job {
-//       id: string;
-//       user_id?: string;
-//       platform_id?: string;
-//       job_type: string;
-//       status: string;
-//       target_url: string;
-//       payout_amount: number;
-//       payout_currency: string;
-//       auto_approve: boolean;
-//       requires_screenshot: boolean;
-//       requires_before_proof: boolean;
-//       proof_instructions: string;
-//       title: string;
-//       description: string;
-//       views_count: number;
-//       total_slots: number;
-//       filled_slots: number;
-//       applications_count: number;
-//       posted_at: string;
-//       completed_at?: string | null;
-//       expires_at: string;
-//       created_at?: string;
-//       platforms?: Platform;
-// }
-
-// interface PlatformStyle {
-//       name: string;
-//       color: string;
-//       text: string;
-//       bg: string;
-//       border: string;
-//       accent: string;
-// }
-
-// interface User {
-//       id: string;
-//       first_name: string;
-//       isSubscribed: boolean;
-// }
-
-// const PLATFORMSXL: PlatformStyle[] = [
-//       { name: "TikTok", color: "from-black via-slate-900 to-black", text: "text-rose-500", bg: "bg-rose-50", border: "border-rose-100", accent: "rose" },
-//       { name: "Instagram", color: "from-purple-600 via-pink-500 to-amber-500", text: "text-pink-600", bg: "bg-pink-50/70", border: "border-pink-100", accent: "pink" },
-//       { name: "Twitter / X", color: "from-slate-950 to-slate-900", text: "text-slate-900", bg: "bg-slate-100", border: "border-slate-200", accent: "slate" },
-//       { name: "YouTube", color: "from-red-600 to-red-700", text: "text-red-600", bg: "bg-red-50", border: "border-red-100", accent: "red" },
-//       { name: "Telegram", color: "from-blue-500 to-sky-400", text: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", accent: "blue" }
-// ];
-
-// type WorkflowStep = 'idle' | 'applying' | 'working' | 'submitting' | 'submitted' | 'error';
-
-// interface LocalProofItem {
-//       local_id: string;
-//       proof_type: ProofType;
-//       value: string;
-//       is_before: boolean;
-//       display_order: number;
-//       file?: File; // for screenshots — uploaded to storage first
-// }
-
-// interface ProofFormState {
-//       worker_social_url: string;
-//       instructions_seen: boolean;
-//       items: LocalProofItem[];
-// }
-
-// // ─── Upload helper ────────────────────────────────────────────────────────────
-
-// async function uploadScreenshot(file: File, userId: string): Promise<string> {
-//       const ext = file.name.split('.').pop();
-//       const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-//       const { data, error } = await supabase.storage
-//       .from('Screenshots')
-//       .upload(path, file, { upsert: false });
-
-//       if (error) throw new Error(`Upload failed: ${error.message}`);
-
-//       const { data: { publicUrl } } = supabase.storage
-//       .from('Screenshots')
-//       .getPublicUrl(data.path);
-
-//       return publicUrl;
-// }
-
-// const JobDetail: React.FC = () => {
-
-//       const [submitted, setSubmitted] = useState<boolean>(false);
-//       const [uploading, setUploading] = useState<boolean>(false);
-//       const [job, setJob] = useState<Job>({} as Job);
-//         // Application state
-//       const [application, setApplication] = useState<JobApplication | null>(null);
-//       const [step, setStep] = useState<WorkflowStep>('idle');
-//       const [actionError, setActionError] = useState('');
-//       const [jobLoading, setJobLoading] = useState(true);
-//       const [jobError, setJobError] = useState('');
-//       const [proof, setProof] = useState<ProofFormState>({
-//             worker_social_url: '',
-//             instructions_seen: false,
-//             items: [],
-//       });
-
-//       const platformInfo = useMemo<PlatformStyle>(() => {
-//             if (!job || !job.platforms) return PLATFORMSXL[0];
-//             return PLATFORMSXL.find((p) => p.name.includes(job.platforms?.name || "")) || PLATFORMSXL[0];
-//       }, [job]);
-
-//       const { job_id } = useParams();
-//       const { profile: user } = useAuth();
-
-//         // ── Load job ───────────────────────────────────────────────────────────────
-//       useEffect(() => {
-//             if (!job_id) return;
-
-//             const load = async () => {
-//                   setJobLoading(true);
-//                   const { data, error } = await supabase
-//                         .from('jobs')
-//                         .select('*, platforms (*)')
-//                         .eq('id', job_id)
-//                         .single();
-
-//                   if (error) {
-//                         setJobError('This job could not be found.');
-//                   } else {
-//                         setJob(data as Job);
-//                         // Check if user has already applied
-//                         const { data: appData } = await supabase
-//                               .from('job_applications')
-//                               .select('*')
-//                               .eq('job_id', job_id)
-//                               .eq('user_id', user?.id)
-//                               .maybeSingle();
-
-//                         if (appData) {
-//                               setApplication(appData as JobApplication);
-//                               setStep(appData.status === 'WORKING' ? 'working' : 'submitted');
-//                         }
-//                   }
-//                   setJobLoading(false);
-//             };
-
-//             load();
-
-//       }, [job_id, user?.id]);
-
-//       // ── Apply for job ──────────────────────────────────────────────────────────
-//       const handleApply = async () => {
-//             setStep('applying');
-//             setActionError('');
-
-//             try {
-//                   const { data, error } = await supabase.rpc('apply_and_start_job', {
-//                         p_job_id: job_id,
-//                   });
-
-//                   if (error) {
-//                         setActionError(error.message);
-//                         setStep('idle');
-//                         return;
-//                   }
-
-//                   if (data?.success) {
-//                         // Fetch the created application
-//                         const { data: appData } = await supabase
-//                         .from('job_applications')
-//                         .select('*')
-//                         .eq('id', data.application_id)
-//                         .single();
-
-//                         setApplication(appData as JobApplication);
-//                         setStep('working');
-//                   }
-//             } catch {
-//                   setActionError('Something went wrong. Please try again.');
-//                   setStep('idle');
-//             }
-//       };
-
-//       // ── Add proof item ─────────────────────────────────────────────────────────
-//       const addProofItem = (type: ProofType, value: string, isBefore: boolean, file?: File) => {
-//             const item: LocalProofItem = {
-//                   local_id:     Math.random().toString(36).slice(2),
-//                   proof_type:   type,
-//                   value,
-//                   is_before:    isBefore,
-//                   display_order: proof.items.length,
-//                   file,
-//             };
-//             setProof(prev => ({ ...prev, items: [...prev.items, item] }));
-//       };
-
-//       const removeProofItem = (local_id: string) => {
-//             setProof(prev => ({
-//                   ...prev,
-//                   items: prev.items.filter(i => i.local_id !== local_id),
-//             }));
-//       };
-
-//       // ── Submit proof ───────────────────────────────────────────────────────────
-//       const handleSubmitProof = async (e: React.FormEvent) => {
-//             e.preventDefault();
-//             setActionError('');
-
-//             if (!proof.worker_social_url.trim()) {
-//                   setActionError('Please enter your social media profile URL or username.');
-//                   return;
-//             }
-
-//             if (!proof.instructions_seen) {
-//                   setActionError('Please confirm you have read the job instructions.');
-//                   return;
-//             }
-
-//             if (proof.items.length === 0) {
-//                   setActionError('Please add at least one proof item.');
-//                   return;
-//             }
-
-//             setStep('submitting');
-
-//             try {
-//                   // 1. Upload any screenshot files first
-//                   const resolvedItems: ProofItemPayload[] = await Promise.all(
-//                         proof.items.map(async (item, idx) => {
-//                               let value = item.value;
-
-//                               if (item.proof_type === 'SCREENSHOT' && item.file) {
-//                                     value = await uploadScreenshot(item.file, user?.user_id as string);
-//                               }
-
-//                               return {
-//                                     proof_type:    item.proof_type,
-//                                     value,
-//                                     is_before:     item.is_before,
-//                                     display_order: idx,
-//                               };
-//                         })
-//                   );
-
-//                   // 2. Submit proof via RPC — creates job_proof + items atomically + auto-flags
-//                   const { data, error } = await supabase.rpc('submit_job_proof', {
-//                         p_application_id:    application!.id,
-//                         p_worker_social_url: proof.worker_social_url.trim(),
-//                         p_instructions_seen: proof.instructions_seen,
-//                         p_items:             JSON.stringify(resolvedItems),
-//                   });
-
-//                   if (error) {
-//                         setActionError(error.message);
-//                         setStep('working');
-//                         return;
-//                   }
-
-//                   if (data?.success) {
-//                         setStep('submitted');
-//                   }
-
-//             } catch (err: any) {
-//                   setActionError(err.message || 'Upload failed. Please try again.');
-//                   setStep('working');
-//             }
-//       };
-
-//       const subscribe = (): void => {
-//             setUploading(true);
-//             setTimeout(() => {
-//                   setUploading(false);
-//                   // setUser(prev => ({ ...prev, isSubscribed: true }));
-//             }, 1200);
-//       };
-
-//       const handleOnSubmit = async (e: React.FormEvent,  submitPayload: { proof: string; p_url: string; selectedImage: { img1: { name: string } | null; img2: { name: string } | null } } ): Promise<void> => {
-//             e.preventDefault();
-//             setUploading(true);
-
-//             // Simulating a high-fidelity loading response representing Supabase Upload pipeline
-//             setTimeout(() => {
-//                   setUploading(false);
-//                   setSubmitted(true);
-//             }, 2000);
-//       };
-
-//       return (
-//             <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-24 font-sans selection:bg-blue-600 selection:text-white">
-//                   {uploading && <UploadingState />}
-
-//                   {/* Header / Subnavigation breadcrumbs */}
-//                   {/* <div className="bg-white border-b border-slate-100 py-4 px-4 sticky top-0 z-40 backdrop-blur-md bg-white/90">
-//                         <div className="max-w-6xl mx-auto flex items-center justify-between">
-//                               <button
-//                                     onClick={() => window.history.back()}
-//                                     className="flex items-center gap-2 text-xs  text-slate-500 hover:text-slate-900 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-100"
-//                               >
-//                                     <ArrowLeft size={14} />
-//                                     <span>Go Back</span>
-//                               </button>
-
-//                               <div className="flex items-center gap-2">
-//                                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-//                                     <span className="text-xs  text-slate-400 uppercase tracking-widest">
-//                                           Secured Escrow Task
-//                                     </span>
-//                               </div>
-//                         </div>
-//                   </div> */}
-
-//                   <main className="max-w-6xl mx-auto px-4 pt-8 space-y-6">
-
-//                         <Header job={job} platformInfo={platformInfo} />
-
-//                         <div className="grid lg:grid-cols-3 gap-8 items-start">
-
-//                               {/* Main Content Pane */}
-//                               <div className="lg:col-span-2 space-y-6">
-//                                     <JobHeroCard job={job} platformInfo={platformInfo} />
-//                                     <InstructionCard job={job} platformInfo={platformInfo} />
-//                               </div>
-
-//                               {/* Sidebar Audit Submission */}
-//                               <div className="space-y-6 lg:sticky lg:top-20">
-//                                     <SideBarForm
-//                                           job={job}
-//                                           user={user as UserProfile}
-//                                           submitted={submitted}
-//                                           subscribe={subscribe}
-//                                           handleOnSubmit={handleOnSubmit}
-//                                           platformInfo={platformInfo}
-//                                     />
-//                               </div>
-
-//                         </div>
-//                   </main>
-//             </div>
-//       );
-// };
-
-// interface HeaderProps {
-//       job: Job;
-//       platformInfo: PlatformStyle;
-// }
-
-// const Header: React.FC<HeaderProps> = ({ job, platformInfo }) => {
-//       return (
-//             <div className="space-y-2">
-
-//                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-//                         <div>
-//                               <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight leading-none">
-//                                     {job.title}
-//                               </h1>
-//                               <p className="text-xs text-slate-500 font-medium mt-1">
-//                                     Escrow Contract ID: <span className="font-mono text-slate-700 select-all ">{job.id}</span>
-//                               </p>
-//                         </div>
-
-//                         <div className="flex items-center gap-2">
-//                               <span className={`text-[10px]  uppercase tracking-wider px-3 py-1 rounded-full border ${platformInfo.bg} ${platformInfo.text} ${platformInfo.border}`}>
-//                                     {job.platforms?.name} Verified
-//                               </span>
-//                               <span className="text-[10px] bg-blue-50 text-blue-700  uppercase tracking-wider px-3 py-1 rounded-full border border-blue-100">
-//                                     Active
-//                               </span>
-//                         </div>
-//                   </div>
-//             </div>
-//       );
-// };
-
-// interface JobHeroCardProps {
-//       job: Job;
-//       platformInfo: PlatformStyle;
-// }
-
-// const JobHeroCard: React.FC<JobHeroCardProps> = ({ job, platformInfo }) => {
-//       const progressPercent = Math.min(100, Math.floor((job.filled_slots / job.total_slots) * 100));
-
-//       return (
-//             <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden p-6 md:p-8 space-y-6 relative">
-//                   <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-//                   <div className="flex items-center gap-4">
-//                         <div className={`p-3 h-14 w-14 rounded-2xl text-white bg-gradient-to-tr ${platformInfo.color} overflow-hidden shadow-inner flex items-center justify-center shrink-0`}>
-//                               <img
-//                                     src={job.platforms?.logo_url || "https://placehold.co/100x100"}
-//                                     className="h-full w-full object-cover rounded-lg"
-//                                     alt="Platform Logo"
-//                               />
-//                         </div>
-//                         <div>
-//                               <span className="block text-xs font-semibold text-slate-400 uppercase">Wages Collateralized</span>
-//                               <h3 className="text-lg font-semibold text-slate-900">Multi-Sig Escrow Shield</h3>
-//                         </div>
-//                   </div>
-
-//                   <div className="space-y-2">
-//                         <p className="text-slate-600 text-sm leading-relaxed font-medium">
-//                               {job.description}
-//                         </p>
-//                   </div>
-
-//                   {/* Grid Specs from public.jobs schema */}
-//                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
-//                         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-//                               <span className="block text-[10px] text-slate-400  uppercase tracking-wider mb-1">Guaranteed Payout</span>
-//                               <span className="text-base font-black text-slate-900 font-mono">
-//                                     {job.payout_currency === "NGN" ? "₦" : "$"}{job.payout_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-//                               </span>
-//                         </div>
-
-//                         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-//                               <span className="block text-[10px] text-slate-400  uppercase tracking-wider mb-1">Total Available Slots</span>
-//                               <span className="text-base font-black text-slate-900 font-mono">{job.total_slots} Slots</span>
-//                         </div>
-
-//                         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-//                               <span className="block text-[10px] text-slate-400  uppercase tracking-wider mb-1">Earners Completed</span>
-//                               <span className="text-base font-black text-slate-900 font-mono">{job.filled_slots} Slots</span>
-//                         </div>
-
-//                         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-//                               <span className="block text-[10px] text-slate-400  uppercase tracking-wider mb-1">Task Views</span>
-//                               <span className="text-base font-black text-slate-900 font-mono flex items-center gap-1">
-//                                     <Eye size={14} className="text-slate-400" />
-//                                     <span>{job.views_count}</span>
-//                               </span>
-//                         </div>
-//                   </div>
-
-//                   <div className="space-y-2 pt-2">
-//                         <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
-//                               <span className="flex items-center gap-1.5">
-//                                     <Users size={14} className="text-slate-400" />
-//                                     <span>Slots Utilization</span>
-//                               </span>
-//                               <span className=" text-slate-800">{progressPercent}% Filled</span>
-//                         </div>
-//                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-//                               <div
-//                                     className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
-//                                     style={{ width: `${progressPercent}%` }}
-//                               />
-//                         </div>
-//                   </div>
-//             </div>
-//       );
-// };
-
-// interface InstructionCardProps {
-//       job: Job;
-//       platformInfo: PlatformStyle;
-// }
-
-// const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) => {
-//       return (
-//             <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden p-6 md:p-8 space-y-6">
-//                   <div className="flex items-center gap-2">
-//                         <div className="p-2 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-//                               <FileText size={18} />
-//                         </div>
-//                         <h3 className="text-base  text-slate-950">
-//                               Earners Audit Requirements
-//                         </h3>
-//                   </div>
-
-//                   <div className="space-y-4">
-
-//                         {/* Step 1 */}
-//                         <div className="flex gap-4 items-start">
-//                               <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 shrink-0">
-//                                     01
-//                               </div>
-//                               <div className="space-y-1.5 flex-1 pt-1">
-//                                     <h4 className="text-xs  text-slate-900 uppercase tracking-wide">Perform Social Operation</h4>
-//                                     <p className="text-xs text-slate-500 leading-relaxed">
-//                                           Navigate directly to the platform target landing point and complete the physical task (e.g. follow, like, join, or leave a review comment).
-//                                     </p>
-//                                     <a
-//                                           href={job.target_url}
-//                                           target="_blank"
-//                                           rel="noreferrer"
-//                                           className={`inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr ${platformInfo.color} text-white text-xs  rounded-xl hover:opacity-90 transition-all shadow-md mt-1`}
-//                                     >
-//                                           <span>Go to task link ({job.platforms?.name})</span>
-//                                           <ExternalLink size={12} />
-//                                     </a>
-//                               </div>
-//                         </div>
-
-//                         {/* Step 2 */}
-//                         <div className="flex gap-4 items-start">
-//                               <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 shrink-0">
-//                                     02
-//                               </div>
-//                               <div className="space-y-2 flex-1 pt-1">
-//                                     <h4 className="text-xs  text-slate-900 uppercase tracking-wide">Document proof of completion</h4>
-//                                     <p className="text-xs text-slate-500 leading-relaxed">
-//                                           Take the required screenshots detailing the process before and after completion based on the instructions.
-//                                     </p>
-
-//                                     <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl space-y-1.5 text-xs text-amber-900">
-//                                           <span className=" flex items-center gap-1.5">
-//                                                 <AlertCircle size={14} className="text-amber-600" />
-//                                                 <span>Verification Rules:</span>
-//                                           </span>
-//                                           <p className="leading-relaxed font-medium whitespace-pre-wrap">{job.proof_instructions}</p>
-//                                     </div>
-//                               </div>
-//                         </div>
-
-//                         {/* Step 3 */}
-//                         <div className="flex gap-4 items-start">
-//                               <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 shrink-0">
-//                                     03
-//                               </div>
-//                               <div className="space-y-1.5 flex-1 pt-1">
-//                                     <h4 className="text-xs  text-slate-900 uppercase tracking-wide">Submit Verification Details</h4>
-//                                     <p className="text-xs text-slate-500 leading-relaxed">
-//                                           Enter your social user handle/ID and attach the documented screenshot evidence inside the sidebar form on this page to trigger your payout review.
-//                                     </p>
-//                               </div>
-//                         </div>
-
-//                   </div>
-
-//                   <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center gap-3.5">
-//                         <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100 shrink-0">
-//                               <ShieldCheck size={18} />
-//                         </div>
-//                         <div>
-//                               <h4 className="text-xs  text-slate-900 leading-none">Instant Escrow Release Shield</h4>
-//                               <p className="text-[11px] text-slate-400 mt-1 leading-normal">
-//                                     Your payment is fully locked in escrow. Submissions are checked and approved by system verification parameters or human review within 24 hours.
-//                               </p>
-//                         </div>
-//                   </div>
-//             </div>
-//       );
-// };
-
-// interface SideBarFormProps {
-//       job: Job;
-//       user: UserProfile;
-//       submitted: boolean;
-//       subscribe: () => void;
-//       handleOnSubmit: (
-//             e: React.FormEvent,
-//             submitPayload: { proof: string; p_url: string; selectedImage: { img1: { name: string } | null; img2: { name: string } | null } }
-//       ) => Promise<void>;
-//       platformInfo: PlatformStyle;
-// }
-
-// const SideBarForm: React.FC<SideBarFormProps> = ({
-//       job,
-//       user,
-//       submitted,
-//       subscribe,
-//       handleOnSubmit,
-//       platformInfo
-// }) => {
-//       const [proof, setProof] = useState<string>("");
-//       const [selectedImage1, setSelectedImage1] = useState<string | null>(null);
-//       const [selectedImage2, setSelectedImage2] = useState<string | null>(null);
-
-//       const [image1File, setImage1File] = useState<File | null>(null);
-//       const [image2File, setImage2File] = useState<File | null>(null);
-
-//       const handleFileChange1 = (e: React.ChangeEvent<HTMLInputElement>): void => {
-//             if (e.target.files && e.target.files[0]) {
-//                   const file = e.target.files[0];
-//                   setSelectedImage1(URL.createObjectURL(file));
-//                   setImage1File(file);
-//             }
-//       };
-
-//       const handleFileChange2 = (e: React.ChangeEvent<HTMLInputElement>): void => {
-//             if (e.target.files && e.target.files[0]) {
-//                   const file = e.target.files[0];
-//                   setSelectedImage2(URL.createObjectURL(file));
-//                   setImage2File(file);
-//             }
-//       };
-
-//       const isFormValid = useMemo<boolean>(() => {
-//             if (!proof.trim()) return false;
-//             if (job.requires_screenshot && !selectedImage1) return false;
-//             if (job.requires_before_proof && !selectedImage2) return false;
-//             return true;
-//       }, [proof, selectedImage1, selectedImage2, job]);
-
-//       // State check: Non-Subscribed Member View
-//       if (!user.is_subscribed) {
-//             return (
-//                   <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-6">
-//                         <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto border border-amber-100">
-//                               <ShieldCheck size={32} />
-//                         </div>
-//                         <div className="space-y-2">
-//                               <h3 className="text-base  text-slate-900">
-//                                     Membership Required
-//                               </h3>
-//                               <p className="text-xs text-slate-500 leading-relaxed px-2">
-//                                     You must be an active subscriber to begin earning from micro-tasks. Join the premium Earners Club today!
-//                               </p>
-//                         </div>
-//                         <button
-//                               onClick={subscribe}
-//                               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-full transition-all shadow-md shadow-blue-600/10 text-sm cursor-pointer"
-//                         >
-//                               Subscribe for ₦5,000 / month
-//                         </button>
-//                   </div>
-//             );
-//       }
-
-//       // State check: Successful Submission Output View
-//       if (submitted) {
-//             return (
-//                   <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-6 animate-in zoom-in-95 duration-300">
-//                         <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
-//                               <CheckCircle2 size={32} />
-//                         </div>
-//                         <div className="space-y-2">
-//                               <h3 className="text-base  text-slate-900">
-//                                     Proof Submitted!
-//                               </h3>
-//                               <p className="text-xs text-slate-500 leading-relaxed px-2">
-//                                     Your verification proof has been securely recorded. You will receive ₦{job.payout_amount} directly in your wallet once confirmed.
-//                               </p>
-//                         </div>
-//                         <button
-//                               onClick={() => (window.location.hash = "#/marketplace")}
-//                               className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-full  transition-all text-xs cursor-pointer"
-//                         >
-//                               Find More Jobs
-//                         </button>
-//                   </div>
-//             );
-//       }
-
-//       return (
-//             <div className="bg-white rounded-3xl p-6 border border-slate-200/60 space-y-6">
-//                   <div className="border-b border-slate-50 pb-4">
-//                         <h3 className="text-base  text-slate-900">
-//                               Submit Task Proof
-//                         </h3>
-//                         <p className="text-[11px] text-slate-400 font-medium mt-1 leading-relaxed">
-//                               Review guidelines, enter your verification handle, and upload your visual logs below.
-//                         </p>
-//                   </div>
-
-//                   <form
-//                         onSubmit={(e) => handleOnSubmit(e, {
-//                               proof,
-//                               p_url: job.target_url,
-//                               selectedImage: {
-//                                     img1: image1File ? { name: image1File.name } : null,
-//                                     img2: image2File ? { name: image2File.name } : null
-//                               }
-//                         })}
-//                         className="space-y-5"
-//                   >
-
-//                         <div className="space-y-2">
-//                               <label className="block text-xs  text-slate-700 uppercase tracking-wider">
-//                                     Your Account URL Handle
-//                               </label>
-//                               <input
-//                                     type="text"
-//                                     required
-//                                     placeholder="e.g. https://instagram.com/username"
-//                                     value={proof}
-//                                     onChange={(e) => setProof(e.target.value)}
-//                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-medium text-slate-800 transition-all"
-//                               />
-//                         </div>
-
-//                         {/* Interactive File Selectors */}
-//                         {job.requires_screenshot && (
-//                               <div className="space-y-4 pt-1">
-
-//                                     {job.requires_before_proof && (
-//                                           <div className="space-y-2">
-//                                                 <span className="block text-xs text-slate-700 uppercase tracking-wider">
-//                                                       1. Screenshot (Before Task)
-//                                                 </span>
-
-//                                                 <label className="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-blue-500 hover:bg-slate-50/50 rounded-xl cursor-pointer transition-all group min-h-[90px]">
-//                                                       <input
-//                                                             type="file"
-//                                                             accept="image/*"
-//                                                             className="hidden"
-//                                                             onChange={handleFileChange2}
-//                                                       />
-//                                                       {selectedImage2 ? (
-//                                                             <div className="flex items-center gap-3 w-full">
-//                                                                   <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-100 shrink-0">
-//                                                                         <img src={selectedImage2} className="w-full h-full object-cover" alt="Preview Before" />
-//                                                                   </div>
-//                                                                   <div className="min-w-0 flex-1">
-//                                                                         <p className="text-[11px]  text-slate-800 truncate">{image2File?.name}</p>
-//                                                                         <p className="text-[9px] text-emerald-600  flex items-center gap-1 mt-0.5">
-//                                                                               <Check size={10} /> Ready to submit
-//                                                                         </p>
-//                                                                   </div>
-//                                                             </div>
-//                                                       ) : (
-//                                                             <div className="flex flex-col items-center justify-center text-center">
-//                                                                   <Camera size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors mb-1.5" />
-//                                                                   <span className="text-[12px] text-slate-700">Attach initial snapshot</span>
-//                                                                   <span className="text-[9px] text-slate-400 mt-0.5">JPEG, PNG up to 5MB</span>
-//                                                             </div>
-//                                                       )}
-//                                                 </label>
-//                                           </div>
-//                                     )}
-
-//                                     <div className="space-y-2">
-//                                           <span className="block text-xs  text-slate-700 uppercase tracking-wider">
-//                                                 {job.requires_before_proof ? "2. Screenshot (After Completion)" : "Screenshot Proof"}
-//                                           </span>
-
-//                                           <label className="relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-blue-500 hover:bg-slate-50/50 rounded-xl cursor-pointer transition-all group min-h-[90px]">
-//                                                 <input
-//                                                       type="file"
-//                                                       accept="image/*"
-//                                                       className="hidden"
-//                                                       onChange={handleFileChange1}
-//                                                       required
-//                                                 />
-//                                                 {selectedImage1 ? (
-//                                                       <div className="flex items-center gap-3 w-full">
-//                                                             <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-100 shrink-0">
-//                                                                   <img src={selectedImage1} className="w-full h-full object-cover" alt="Preview Proof" />
-//                                                             </div>
-//                                                             <div className="min-w-0 flex-1">
-//                                                                   <p className="text-[12px] text-slate-800 truncate">{image1File?.name}</p>
-//                                                                   <p className="text-[9px] text-emerald-600  flex items-center gap-1 mt-0.5">
-//                                                                         <Check size={10} /> Ready to submit
-//                                                                   </p>
-//                                                             </div>
-//                                                       </div>
-//                                                 ) : (
-//                                                       <div className="flex flex-col items-center justify-center text-center">
-//                                                             <UploadCloud size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors mb-1.5" />
-//                                                             <span className="text-[12px] text-slate-700">Upload proof image</span>
-//                                                             <span className="text-[10px] text-slate-400 mt-0.5">JPEG, PNG up to 5MB</span>
-//                                                       </div>
-//                                                 )}
-//                                           </label>
-//                                     </div>
-
-//                               </div>
-//                         )}
-
-//                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100/50 flex items-center gap-2.5">
-//                               {job.auto_approve ? (
-//                                     <>
-//                                           <Zap size={14} className="text-emerald-500 shrink-0" />
-//                                           <span className="text-[12px] text-slate-500 leading-none">Instant auto-approvals configured</span>
-//                                     </>
-//                               ) : (
-//                                     <>
-//                                           <Clock size={14} className="text-indigo-500 shrink-0" />
-//                                           <span className="text-[12px] text-slate-500 leading-none">Manually audited • 24h SLA</span>
-//                                     </>
-//                               )}
-//                         </div>
-
-//                         <button
-//                               type="submit"
-//                               disabled={!isFormValid}
-//                               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3.5 rounded-full text-sm transition-all shadow-md shadow-blue-600/10 cursor-pointer text-center"
-//                         >
-//                               Finish & Submit Task
-//                         </button>
-
-//                   </form>
-//             </div>
-//       );
-// };
-
-// const UploadingState: React.FC = () => {
-//       return (
-//             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[2200] flex items-center justify-center">
-//                   <div className="bg-white rounded-3xl p-8 max-w-xs w-full shadow-2xl border border-slate-100 flex flex-col items-center justify-center space-y-4">
-//                         <div className="relative flex items-center justify-center">
-//                               <div className="w-12 h-12 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin" />
-//                               <UploadCloud className="absolute text-blue-600" size={18} />
-//                         </div>
-//                         <div className="text-center space-y-1">
-//                               <h4 className="text-sm  text-slate-900">Uploading Assets</h4>
-//                               <p className="text-[10px] text-slate-400">Verifying file metadata structure...</p>
-//                         </div>
-//                   </div>
-//             </div>
-//       );
-// };
-
-// export default JobDetail;
-
 import React, {
       useState,
       useEffect,
@@ -837,25 +6,42 @@ import React, {
       useCallback,
 } from 'react';
 import {
-      ArrowLeft,
-      ExternalLink,
-      CheckCircle2,
-      AlertCircle,
-      Clock,
-      Users,
-      Zap,
-      ShieldCheck,
-      UploadCloud,
-      Eye,
-      Camera,
-      Check,
-      FileText,
-      Loader2,
-      X,
-      Lock,
-      ChevronRight,
-      Sparkles,
-} from 'lucide-react';
+      ArrowLeftRegular,
+      OpenRegular,
+      CheckmarkCircleRegular,
+      ErrorCircleRegular,
+      ClockRegular,
+      PeopleRegular,
+      FlashRegular,
+      ShieldCheckmarkRegular,
+      CloudArrowUpRegular,
+      EyeRegular,
+      CameraRegular,
+      CheckmarkRegular,
+      DocumentRegular,
+      SpinnerIosRegular,
+      DismissRegular,
+      LockClosedRegular,
+      ChevronRightRegular,
+      SparkleRegular,
+} from '@fluentui/react-icons';
+import {
+      makeStyles,
+      shorthands,
+      tokens,
+      Text,
+      Button,
+      Input,
+      Checkbox,
+      Badge,
+      ProgressBar,
+      Spinner,
+      Card,
+      CardHeader,
+      Divider,
+      Avatar,
+      mergeClasses,
+} from '@fluentui/react-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/server/supabase';
 import { useAuth } from '@/contexts/authentication';
@@ -867,7 +53,7 @@ import {
 } from '@/types/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPES
+// TYPES  (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Platform {
@@ -903,35 +89,31 @@ interface Job {
 
 interface PlatformStyle {
       name: string;
-      color: string;
-      text: string;
-      bg: string;
-      border: string;
-      accent: string;
+      gradient: string; // CSS gradient string used inline
+      accentColor: string; // CSS color token
+      badgeBg: string;
+      badgeFg: string;
 }
 
-// Proof state managed entirely at the top level
 interface ProofFormState {
       worker_social_url: string;
       instructions_seen: boolean;
-      // Screenshot files (managed locally, uploaded on submit)
       before_file: File | null;
       before_preview: string | null;
       after_file: File | null;
       after_preview: string | null;
 }
 
-// Workflow steps — linear, one-way except on error
 type WorkflowStep =
-      | 'loading_job' // fetching job data
-      | 'idle' // job loaded, user hasn't applied
-      | 'applying' // RPC in flight
-      | 'working' // applied, filling out proof form
-      | 'submitting' // uploading files + calling submit RPC
-      | 'submitted' // done
-      | 'already_applied' // user came back to a job they already applied to
-      | 'slots_full' // all slots taken
-      | 'job_error'; // job load failed
+      | 'loading_job'
+      | 'idle'
+      | 'applying'
+      | 'working'
+      | 'submitting'
+      | 'submitted'
+      | 'already_applied'
+      | 'slots_full'
+      | 'job_error';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -940,43 +122,38 @@ type WorkflowStep =
 const PLATFORMSXL: PlatformStyle[] = [
       {
             name: 'TikTok',
-            color: 'from-black via-slate-900 to-black',
-            text: 'text-rose-500',
-            bg: 'bg-rose-50',
-            border: 'border-rose-100',
-            accent: 'rose',
+            gradient: 'linear-gradient(135deg, #000 0%, #1a1a2e 100%)',
+            accentColor: '#f43f5e',
+            badgeBg: '#fff1f2',
+            badgeFg: '#f43f5e',
       },
       {
             name: 'Instagram',
-            color: 'from-purple-600 via-pink-500 to-amber-500',
-            text: 'text-pink-600',
-            bg: 'bg-pink-50/70',
-            border: 'border-pink-100',
-            accent: 'pink',
+            gradient: 'linear-gradient(135deg, #7c3aed 0%, #ec4899 60%, #f59e0b 100%)',
+            accentColor: '#db2777',
+            badgeBg: '#fdf2f8',
+            badgeFg: '#db2777',
       },
       {
             name: 'Twitter / X',
-            color: 'from-slate-950 to-slate-900',
-            text: 'text-slate-900',
-            bg: 'bg-slate-100',
-            border: 'border-slate-200',
-            accent: 'slate',
+            gradient: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            accentColor: '#0f172a',
+            badgeBg: '#f1f5f9',
+            badgeFg: '#0f172a',
       },
       {
             name: 'YouTube',
-            color: 'from-red-600 to-red-700',
-            text: 'text-red-600',
-            bg: 'bg-red-50',
-            border: 'border-red-100',
-            accent: 'red',
+            gradient: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+            accentColor: '#dc2626',
+            badgeBg: '#fef2f2',
+            badgeFg: '#dc2626',
       },
       {
             name: 'Telegram',
-            color: 'from-blue-500 to-sky-400',
-            text: 'text-blue-600',
-            bg: 'bg-blue-50',
-            border: 'border-blue-100',
-            accent: 'blue',
+            gradient: 'linear-gradient(135deg, #3b82f6 0%, #38bdf8 100%)',
+            accentColor: '#2563eb',
+            badgeBg: '#eff6ff',
+            badgeFg: '#2563eb',
       },
 ];
 
@@ -987,27 +164,464 @@ const PLATFORMSXL: PlatformStyle[] = [
 async function uploadScreenshot(file: File, userId: string): Promise<string> {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
       const { data, error } = await supabase.storage
             .from('Screenshots')
             .upload(path, file, { upsert: false });
-
-      if (error || !data) {
-            throw new Error(
-                  `Upload failed: ${error?.message || 'No data returned'}`
-            );
-      }
-
-      const {
-            data: { publicUrl },
-      } = supabase.storage.from('Screenshots').getPublicUrl(data.path);
-
+      if (error || !data) throw new Error(`Upload failed: ${error?.message || 'No data returned'}`);
+      const { data: { publicUrl } } = supabase.storage.from('Screenshots').getPublicUrl(data.path);
       return publicUrl;
 }
 
 function formatCurrency(amount: number, currency: string): string {
       return `${currency === 'NGN' ? '₦' : '$'}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const useStyles = makeStyles({
+      // ── Page shell ──────────────────────────────────────────────────────────
+      page: {
+            minHeight: '100vh',
+            backgroundColor: tokens.colorNeutralBackground2,
+            paddingBottom: '96px',
+            fontFamily: tokens.fontFamilyBase,
+      },
+      main: {
+            maxWidth: '1152px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            paddingLeft: tokens.spacingHorizontalL,
+            paddingRight: tokens.spacingHorizontalL,
+            paddingTop: tokens.spacingVerticalXXL,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalL,
+      },
+      twoCol: {
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: tokens.spacingHorizontalXL,
+            '@media (min-width: 1024px)': {
+                  gridTemplateColumns: '2fr 1fr',
+            },
+      },
+      mainCol: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalL,
+      },
+      sidebar: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalM,
+            '@media (min-width: 1024px)': {
+                  position: 'sticky',
+                  top: '80px',
+            },
+      },
+
+      // ── Generic card ────────────────────────────────────────────────────────
+      card: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            borderRadius: tokens.borderRadiusXLarge,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            ...shorthands.padding(tokens.spacingVerticalXL, tokens.spacingHorizontalXL),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalL,
+            position: 'relative',
+            overflow: 'hidden',
+      },
+      cardSm: {
+            ...shorthands.padding(tokens.spacingVerticalL, tokens.spacingHorizontalL),
+      },
+
+      // ── Header ──────────────────────────────────────────────────────────────
+      header: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalS,
+            '@media (min-width: 640px)': {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+            },
+      },
+      headerBadges: {
+            display: 'flex',
+            gap: tokens.spacingHorizontalS,
+            flexShrink: 0,
+      },
+      escrowId: {
+            fontFamily: tokens.fontFamilyMonospace,
+            color: tokens.colorNeutralForeground2,
+            userSelect: 'all',
+      },
+
+      // ── Job hero ────────────────────────────────────────────────────────────
+      statsGrid: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: tokens.spacingHorizontalS,
+            paddingTop: tokens.spacingVerticalL,
+            borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+            '@media (min-width: 768px)': {
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+            },
+      },
+      statCell: {
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            ...shorthands.padding(tokens.spacingVerticalS, tokens.spacingHorizontalM),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+      },
+      statValue: {
+            fontFamily: tokens.fontFamilyMonospace,
+            fontWeight: tokens.fontWeightBold,
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground1,
+      },
+      progressRow: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalXS,
+      },
+      progressLabel: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+      },
+
+      // ── Instruction card ─────────────────────────────────────────────────
+      stepRow: {
+            display: 'flex',
+            gap: tokens.spacingHorizontalM,
+            alignItems: 'flex-start',
+      },
+      stepNum: {
+            minWidth: '32px',
+            height: '32px',
+            borderRadius: tokens.borderRadiusMedium,
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: tokens.fontWeightBold,
+            fontSize: tokens.fontSizeBase100,
+            color: tokens.colorNeutralForeground1,
+            flexShrink: 0,
+      },
+      stepBody: {
+            flex: 1,
+            paddingTop: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalXS,
+      },
+      warningBox: {
+            backgroundColor: '#fffbeb',
+            ...shorthands.border('1px', 'solid', '#fde68a'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+      },
+      escrowShield: {
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM),
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalM,
+      },
+      escrowIcon: {
+            ...shorthands.padding(tokens.spacingVerticalS),
+            backgroundColor: '#f0fdf4',
+            ...shorthands.borderRadius(tokens.borderRadiusMedium),
+            ...shorthands.border('1px', 'solid', '#bbf7d0'),
+            color: '#16a34a',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+      },
+
+      // ── Sidebar cards ────────────────────────────────────────────────────
+      payoutHighlight: {
+            background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
+            ...shorthands.border('1px', 'solid', '#bfdbfe'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalL, tokens.spacingHorizontalL),
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+      },
+      payoutAmount: {
+            fontFamily: tokens.fontFamilyMonospace,
+            fontWeight: tokens.fontWeightBold,
+            fontSize: '28px',
+            color: tokens.colorNeutralForeground1,
+      },
+      metaGrid: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: tokens.spacingVerticalXS,
+      },
+      metaItem: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: tokens.colorNeutralForeground3,
+            fontSize: tokens.fontSizeBase100,
+      },
+      featureList: {
+            backgroundColor: '#eff6ff',
+            ...shorthands.border('1px', 'solid', '#bfdbfe'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalXS,
+      },
+      featureItem: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalXS,
+            fontSize: tokens.fontSizeBase100,
+            color: '#1e40af',
+      },
+      statusBadge: {
+            ...shorthands.padding('10px', tokens.spacingHorizontalM),
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.borderRadius(tokens.borderRadiusMedium),
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalXS,
+      },
+      checkboxLabel: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: tokens.spacingHorizontalS,
+            cursor: 'pointer',
+      },
+
+      // ── Screenshot dropzone ──────────────────────────────────────────────
+      dropzone: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...shorthands.padding(tokens.spacingVerticalL, tokens.spacingHorizontalM),
+            ...shorthands.border('2px', 'dashed', tokens.colorNeutralStroke1),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            cursor: 'pointer',
+            transition: 'border-color 0.15s, background-color 0.15s',
+            minHeight: '90px',
+            textAlign: 'center',
+            ':hover': {
+                  borderColor: tokens.colorBrandStroke1,
+                  backgroundColor: tokens.colorBrandBackground2,
+            },
+      },
+      dropzonePreview: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalM,
+            ...shorthands.padding(tokens.spacingVerticalS, tokens.spacingHorizontalM),
+            backgroundColor: '#f0fdf4',
+            ...shorthands.border('1px', 'solid', '#bbf7d0'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+      },
+      previewThumb: {
+            width: '48px',
+            height: '48px',
+            ...shorthands.borderRadius(tokens.borderRadiusMedium),
+            overflow: 'hidden',
+            ...shorthands.border('1px', 'solid', '#bbf7d0'),
+            flexShrink: 0,
+      },
+      previewThumbImg: {
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+      },
+
+      // ── Platform logo box ────────────────────────────────────────────────
+      platformLogo: {
+            width: '56px',
+            height: '56px',
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+      },
+
+      // ── Error box ────────────────────────────────────────────────────────
+      errorBox: {
+            backgroundColor: tokens.colorStatusDangerBackground1,
+            ...shorthands.border('1px', 'solid', tokens.colorStatusDangerBorder1),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalS, tokens.spacingHorizontalM),
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: tokens.spacingHorizontalXS,
+      },
+
+      // ── Full-screen overlay ──────────────────────────────────────────────
+      overlay: {
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 2200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+      },
+      overlayCard: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            ...shorthands.borderRadius(tokens.borderRadiusXLarge),
+            ...shorthands.padding(tokens.spacingVerticalXXL, tokens.spacingHorizontalXXL),
+            maxWidth: '320px',
+            width: '100%',
+            boxShadow: tokens.shadow64,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: tokens.spacingVerticalL,
+      },
+
+      // ── Icon accent boxes ────────────────────────────────────────────────
+      iconBoxAmber: {
+            width: '56px',
+            height: '56px',
+            backgroundColor: '#fffbeb',
+            ...shorthands.border('1px', 'solid', '#fde68a'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#f59e0b',
+      },
+      iconBoxGreen: {
+            width: '56px',
+            height: '56px',
+            backgroundColor: '#f0fdf4',
+            ...shorthands.border('1px', 'solid', '#bbf7d0'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#16a34a',
+      },
+      iconBoxBlue: {
+            width: '56px',
+            height: '56px',
+            backgroundColor: '#eff6ff',
+            ...shorthands.border('1px', 'solid', '#bfdbfe'),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#2563eb',
+      },
+      iconBoxSlate: {
+            width: '56px',
+            height: '56px',
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke1),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: tokens.colorNeutralForeground3,
+      },
+      iconBoxBlueSmall: {
+            ...shorthands.padding(tokens.spacingVerticalS),
+            backgroundColor: '#eff6ff',
+            ...shorthands.border('1px', 'solid', '#bfdbfe'),
+            ...shorthands.borderRadius(tokens.borderRadiusMedium),
+            color: '#2563eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+      },
+
+      // ── Success list ─────────────────────────────────────────────────────
+      successList: {
+            backgroundColor: tokens.colorNeutralBackground2,
+            ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+            ...shorthands.borderRadius(tokens.borderRadiusLarge),
+            ...shorthands.padding(tokens.spacingVerticalM, tokens.spacingHorizontalM),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacingVerticalXS,
+            textAlign: 'left',
+            width: '100%',
+      },
+      successItem: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacingHorizontalXS,
+            fontSize: tokens.fontSizeBase100,
+            color: tokens.colorNeutralForeground2,
+      },
+
+      // ── Transition spinner card ──────────────────────────────────────────
+      transitionCard: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: tokens.spacingVerticalL,
+            minHeight: '220px',
+      },
+
+      // ── Center state ────────────────────────────────────────────────────
+      centerState: {
+            minHeight: '60vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: tokens.spacingVerticalL,
+      },
+
+      // ── Page loading ────────────────────────────────────────────────────
+      pageLoading: {
+            minHeight: '60vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+      },
+
+      // ── Form section divider ────────────────────────────────────────────
+      formHeader: {
+            paddingBottom: tokens.spacingVerticalM,
+            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+      },
+
+      fullWidth: {
+            width: '100%',
+      },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT COMPONENT
@@ -1017,15 +631,13 @@ const JobDetail: React.FC = () => {
       const { job_id } = useParams<{ job_id: string }>();
       const navigate = useNavigate();
       const { profile: user } = useAuth();
+      const styles = useStyles();
 
       const [job, setJob] = useState<Job | null>(null);
       const [step, setStep] = useState<WorkflowStep>('loading_job');
-      const [application, setApplication] = useState<JobApplication | null>(
-            null
-      );
+      const [application, setApplication] = useState<JobApplication | null>(null);
       const [actionError, setActionError] = useState('');
 
-      // All proof state lives here — passed down, never duplicated
       const [proofForm, setProofForm] = useState<ProofFormState>({
             worker_social_url: '',
             instructions_seen: false,
@@ -1037,304 +649,134 @@ const JobDetail: React.FC = () => {
 
       const platformInfo = useMemo<PlatformStyle>(() => {
             if (!job?.platforms) return PLATFORMSXL[0];
-            return (
-                  PLATFORMSXL.find((p) =>
-                        job.platforms!.name.includes(p.name)
-                  ) ?? PLATFORMSXL[0]
-            );
+            return PLATFORMSXL.find((p) => job.platforms!.name.includes(p.name)) ?? PLATFORMSXL[0];
       }, [job]);
-
-      // ── Load job + check existing application ────────────────────────────────
 
       useEffect(() => {
             if (!job_id || !user?.user_id) return;
-
             const load = async () => {
                   setStep('loading_job');
-
                   const { data: jobData, error: jobError } = await supabase
                         .from('jobs')
                         .select('*, platforms (*)')
                         .eq('id', job_id)
                         .single();
-
-                  if (jobError || !jobData) {
-                        setStep('job_error');
-                        return;
-                  }
-
+                  if (jobError || !jobData) { setStep('job_error'); return; }
                   const j = jobData as Job;
                   setJob(j);
-
-                  // Check slots
-                  if (j.filled_slots >= j.total_slots) {
-                        setStep('slots_full');
-                        return;
-                  }
-
-                  // Check if already applied — column is worker_id in your schema
+                  if (j.filled_slots >= j.total_slots) { setStep('slots_full'); return; }
                   const { data: appData } = await supabase
                         .from('job_applications')
                         .select('*')
                         .eq('job_id', job_id)
                         .eq('worker_id', user.user_id)
                         .maybeSingle();
-
                   if (appData) {
                         setApplication(appData as JobApplication);
-                        // If they were mid-proof, drop them back to the form
-                        if (['APPLIED', 'WORKING'].includes(appData.status)) {
-                              setStep('working');
-                        } else {
-                              // SUBMITTED, APPROVED, REJECTED, PAID — show already-applied state
-                              setStep('already_applied');
-                        }
+                        setStep(['APPLIED', 'WORKING'].includes(appData.status) ? 'working' : 'already_applied');
                         return;
                   }
-
                   setStep('idle');
             };
-
             load();
       }, [job_id, user?.user_id]);
-
-      // ── Apply ────────────────────────────────────────────────────────────────
 
       const handleApply = useCallback(async () => {
             setStep('applying');
             setActionError('');
-
             try {
-                  const { data, error } = await supabase.rpc(
-                        'apply_and_start_job',
-                        {
-                              p_job_id: job_id,
-                        }
-                  );
-
-                  if (error) {
-                        setActionError(error.message);
-                        setStep('idle');
-                        return;
-                  }
-
+                  const { data, error } = await supabase.rpc('apply_and_start_job', { p_job_id: job_id });
+                  if (error) { setActionError(error.message); setStep('idle'); return; }
                   if (data?.success) {
                         const { data: appData } = await supabase
-                              .from('job_applications')
-                              .select('*')
-                              .eq('id', data.application_id)
-                              .single();
-
+                              .from('job_applications').select('*').eq('id', data.application_id).single();
                         setApplication(appData as JobApplication);
                         setStep('working');
                   }
-            } catch {
-                  setActionError('Something went wrong. Please try again.');
-                  setStep('idle');
-            }
+            } catch { setActionError('Something went wrong. Please try again.'); setStep('idle'); }
       }, [job_id]);
 
-      // ── Submit proof ─────────────────────────────────────────────────────────
-
-      const handleSubmitProof = useCallback(
-            async (e: React.FormEvent) => {
-                  e.preventDefault();
-                  setActionError('');
-
-                  // Client-side validation
-                  if (!proofForm.worker_social_url.trim()) {
-                        setActionError(
-                              'Please enter your social media profile URL or username.'
-                        );
-                        return;
+      const handleSubmitProof = useCallback(async (e: React.FormEvent) => {
+            e.preventDefault();
+            setActionError('');
+            if (!proofForm.worker_social_url.trim()) { setActionError('Please enter your social media profile URL or username.'); return; }
+            if (!proofForm.instructions_seen) { setActionError('Please confirm you have read and followed the instructions.'); return; }
+            if (job?.requires_screenshot && !proofForm.after_file) { setActionError('Please upload your proof screenshot.'); return; }
+            if (job?.requires_before_proof && !proofForm.before_file) { setActionError('This job requires a before screenshot. Please upload it.'); return; }
+            setStep('submitting');
+            try {
+                  const items: ProofItemPayload[] = [];
+                  if (job?.requires_before_proof && proofForm.before_file) {
+                        items.push({ proof_type: 'SCREENSHOT', value: await uploadScreenshot(proofForm.before_file, user!.user_id), is_before: true, display_order: 0 });
                   }
-                  if (!proofForm.instructions_seen) {
-                        setActionError(
-                              'Please confirm you have read and followed the instructions.'
-                        );
-                        return;
+                  if (job?.requires_screenshot && proofForm.after_file) {
+                        items.push({ proof_type: 'SCREENSHOT', value: await uploadScreenshot(proofForm.after_file, user!.user_id), is_before: false, display_order: items.length });
                   }
-                  if (job?.requires_screenshot && !proofForm.after_file) {
-                        setActionError('Please upload your proof screenshot.');
-                        return;
-                  }
-                  if (job?.requires_before_proof && !proofForm.before_file) {
-                        setActionError(
-                              'This job requires a before screenshot. Please upload it.'
-                        );
-                        return;
-                  }
-
-                  setStep('submitting');
-
-                  try {
-                        const items: ProofItemPayload[] = [];
-
-                        // 1. Upload before screenshot if required
-                        if (
-                              job?.requires_before_proof &&
-                              proofForm.before_file
-                        ) {
-                              const beforeUrl = await uploadScreenshot(
-                                    proofForm.before_file,
-                                    user!.user_id
-                              );
-
-                              items.push({
-                                    proof_type: 'SCREENSHOT',
-                                    value: beforeUrl,
-                                    is_before: true,
-                                    display_order: 0,
-                              });
-                        }
-
-                        // 2. Upload after screenshot
-                        if (job?.requires_screenshot && proofForm.after_file) {
-                              const afterUrl = await uploadScreenshot(
-                                    proofForm.after_file,
-                                    user!.user_id
-                              );
-                              items.push({
-                                    proof_type: 'SCREENSHOT',
-                                    value: afterUrl,
-                                    is_before: false,
-                                    display_order: items.length,
-                              });
-                        }
-
-                        // 3. Always add the social URL as a USERNAME item
-                        items.push({
-                              proof_type: 'USERNAME',
-                              value: proofForm.worker_social_url.trim(),
-                              is_before: false,
-                              display_order: items.length,
-                        });
-
-                        // 4. Call RPC — atomically creates job_proof + items + auto-flags
-                        const { data, error } = await supabase.rpc(
-                              'submit_job_proof',
-                              {
-                                    p_application_id: application!.id,
-                                    p_worker_social_url:
-                                          proofForm.worker_social_url.trim(),
-                                    p_instructions_seen:
-                                          proofForm.instructions_seen,
-                                    p_items: items,
-                              }
-                        );
-
-                        if (error) {
-                              setActionError(error.message);
-                              setStep('working');
-                              return;
-                        }
-
-                        if (data?.success) {
-                              setStep('submitted');
-                        }
-                  } catch (err: any) {
-                        setActionError(
-                              err.message ?? 'Upload failed. Please try again.'
-                        );
-                        setStep('working');
-                  }
-            },
-            [proofForm, job, application, user]
-      );
-
-      // ── File handlers ─────────────────────────────────────────────────────────
+                  items.push({ proof_type: 'USERNAME', value: proofForm.worker_social_url.trim(), is_before: false, display_order: items.length });
+                  const { data, error } = await supabase.rpc('submit_job_proof', {
+                        p_application_id: application!.id,
+                        p_worker_social_url: proofForm.worker_social_url.trim(),
+                        p_instructions_seen: proofForm.instructions_seen,
+                        p_items: items,
+                  });
+                  if (error) { setActionError(error.message); setStep('working'); return; }
+                  if (data?.success) setStep('submitted');
+            } catch (err: any) { setActionError(err.message ?? 'Upload failed. Please try again.'); setStep('working'); }
+      }, [proofForm, job, application, user]);
 
       const handleBeforeFile = useCallback((file: File) => {
-            setProofForm((prev) => ({
-                  ...prev,
-                  before_file: file,
-                  before_preview: URL.createObjectURL(file),
-            }));
+            setProofForm((prev) => ({ ...prev, before_file: file, before_preview: URL.createObjectURL(file) }));
       }, []);
 
       const handleAfterFile = useCallback((file: File) => {
-            setProofForm((prev) => ({
-                  ...prev,
-                  after_file: file,
-                  after_preview: URL.createObjectURL(file),
-            }));
+            setProofForm((prev) => ({ ...prev, after_file: file, after_preview: URL.createObjectURL(file) }));
       }, []);
 
       const clearBeforeFile = useCallback(() => {
-            setProofForm((prev) => {
-                  if (prev.before_preview)
-                        URL.revokeObjectURL(prev.before_preview);
-                  return { ...prev, before_file: null, before_preview: null };
-            });
+            setProofForm((prev) => { if (prev.before_preview) URL.revokeObjectURL(prev.before_preview); return { ...prev, before_file: null, before_preview: null }; });
       }, []);
 
       const clearAfterFile = useCallback(() => {
-            setProofForm((prev) => {
-                  if (prev.after_preview)
-                        URL.revokeObjectURL(prev.after_preview);
-                  return { ...prev, after_file: null, after_preview: null };
-            });
+            setProofForm((prev) => { if (prev.after_preview) URL.revokeObjectURL(prev.after_preview); return { ...prev, after_file: null, after_preview: null }; });
       }, []);
 
-      // ── Render ────────────────────────────────────────────────────────────────
-
-      if (step === 'loading_job') {
-            return <PageLoadingState />;
-      }
+      if (step === 'loading_job') return <PageLoadingState />;
 
       if (step === 'job_error' || !job) {
             return (
-                  <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-                        <div className="w-16 h-16 bg-red-50 rounded-3xl flex items-center justify-center">
-                              <AlertCircle size={28} className="text-red-400" />
+                  <div className={styles.centerState}>
+                        <div className={styles.iconBoxAmber} style={{ width: 64, height: 64 }}>
+                              <ErrorCircleRegular fontSize={28} />
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-900">
-                              Job Not Found
-                        </h2>
-                        <p className="text-sm text-slate-500 text-center max-w-xs">
-                              This job may have expired or been removed from the
-                              marketplace.
-                        </p>
-                        <button
+                        <Text size={500} weight="semibold">Job Not Found</Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', maxWidth: 280 }}>
+                              This job may have expired or been removed from the marketplace.
+                        </Text>
+                        <Button
+                              appearance="transparent"
+                              icon={<ArrowLeftRegular />}
                               onClick={() => navigate('/marketplace')}
-                              className="flex items-center gap-2 text-blue-600 font-semibold hover:underline text-sm mt-2"
                         >
-                              <ArrowLeft size={16} /> Back to Marketplace
-                        </button>
+                              Back to Marketplace
+                        </Button>
                   </div>
             );
       }
 
       const slotsLeft = job.total_slots - job.filled_slots;
-      const progressPercent = Math.min(
-            100,
-            Math.floor((job.filled_slots / job.total_slots) * 100)
-      );
+      const progressPercent = Math.min(100, Math.floor((job.filled_slots / job.total_slots) * 100));
 
       return (
-            <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-24 font-sans selection:bg-blue-600 selection:text-white">
+            <div className={styles.page}>
                   {step === 'submitting' && <UploadingState />}
-
-                  <main className="max-w-6xl mx-auto px-4 pt-8 space-y-6">
-                        <Header job={job} platformInfo={platformInfo} />
-
-                        <div className="grid lg:grid-cols-3 gap-8 items-start">
-                              {/* ── Main content ─────────────────────────────────────────────── */}
-                              <div className="lg:col-span-2 space-y-6">
-                                    <JobHeroCard
-                                          job={job}
-                                          platformInfo={platformInfo}
-                                          progressPercent={progressPercent}
-                                          slotsLeft={slotsLeft}
-                                    />
-                                    <InstructionCard
-                                          job={job}
-                                          platformInfo={platformInfo}
-                                    />
+                  <main className={styles.main}>
+                        <PageHeader job={job} platformInfo={platformInfo} />
+                        <div className={styles.twoCol}>
+                              <div className={styles.mainCol}>
+                                    <JobHeroCard job={job} platformInfo={platformInfo} progressPercent={progressPercent} slotsLeft={slotsLeft} />
+                                    <InstructionCard job={job} platformInfo={platformInfo} />
                               </div>
-
-                              {/* ── Sidebar ───────────────────────────────────────────────────── */}
-                              <div className="space-y-5 lg:sticky lg:top-20">
+                              <div className={styles.sidebar}>
                                     <SidebarPanel
                                           job={job}
                                           user={user as UserProfile}
@@ -1348,9 +790,7 @@ const JobDetail: React.FC = () => {
                                           onAfterFile={handleAfterFile}
                                           onClearBefore={clearBeforeFile}
                                           onClearAfter={clearAfterFile}
-                                          onFindMore={() =>
-                                                navigate('/marketplace')
-                                          }
+                                          onFindMore={() => navigate('/marketplace')}
                                     />
                               </div>
                         </div>
@@ -1360,7 +800,7 @@ const JobDetail: React.FC = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR PANEL — routes to the right sub-state
+// SIDEBAR PANEL
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SidebarPanelProps {
@@ -1382,29 +822,13 @@ interface SidebarPanelProps {
 const SidebarPanel: React.FC<SidebarPanelProps> = (props) => {
       const { step, job, user } = props;
 
-      // Membership gate — must be checked before anything else
-      if (!user?.is_subscribed) {
-            return <NotSubscribedCard />;
-      }
+      if (!user?.is_subscribed) return <NotSubscribedCard />;
 
       switch (step) {
             case 'idle':
-                  return (
-                        <ApplyCard
-                              job={job}
-                              error={props.actionError}
-                              onApply={props.onApply}
-                        />
-                  );
-
+                  return <ApplyCard job={job} error={props.actionError} onApply={props.onApply} />;
             case 'applying':
-                  return (
-                        <TransitionCard
-                              label="Securing your slot…"
-                              sub="Checking availability and locking you in."
-                        />
-                  );
-
+                  return <TransitionCard label="Securing your slot…" sub="Checking availability and locking you in." />;
             case 'working':
                   return (
                         <ProofForm
@@ -1419,37 +843,14 @@ const SidebarPanel: React.FC<SidebarPanelProps> = (props) => {
                               error={props.actionError}
                         />
                   );
-
             case 'submitting':
-                  // The full-screen overlay handles this — show a placeholder card
-                  return (
-                        <TransitionCard
-                              label="Uploading your proof…"
-                              sub="Please keep this page open."
-                        />
-                  );
-
+                  return <TransitionCard label="Uploading your proof…" sub="Please keep this page open." />;
             case 'submitted':
-                  return (
-                        <SubmittedCard
-                              job={job}
-                              onFindMore={props.onFindMore}
-                        />
-                  );
-
+                  return <SubmittedCard job={job} onFindMore={props.onFindMore} />;
             case 'already_applied':
-                  return (
-                        <AlreadyAppliedCard
-                              job={job}
-                              onFindMore={props.onFindMore}
-                        />
-                  );
-
+                  return <AlreadyAppliedCard job={job} onFindMore={props.onFindMore} />;
             case 'slots_full':
-                  return (
-                        <SlotFullCard job={job} onFindMore={props.onFindMore} />
-                  );
-
+                  return <SlotFullCard job={job} onFindMore={props.onFindMore} />;
             default:
                   return null;
       }
@@ -1459,256 +860,185 @@ const SidebarPanel: React.FC<SidebarPanelProps> = (props) => {
 // SIDEBAR STATE CARDS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NotSubscribedCard: React.FC = () => (
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-5">
-            <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto border border-amber-100">
-                  <Lock size={24} />
+const NotSubscribedCard: React.FC = () => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm)} style={{ textAlign: 'center', alignItems: 'center' }}>
+                  <div className={styles.iconBoxAmber}>
+                        <LockClosedRegular fontSize={24} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Text size={400} weight="semibold" block>Membership Required</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                              You need an active subscription to earn from micro-tasks. Join the Earners Club and start earning today.
+                        </Text>
+                  </div>
+                  <div className={styles.featureList} style={{ width: '100%' }}>
+                        {['Access all active jobs', 'Instant payout on approval', 'Priority review queue'].map((f) => (
+                              <div key={f} className={styles.featureItem}>
+                                    <CheckmarkRegular fontSize={14} color="#3b82f6" />
+                                    <Text size={100}>{f}</Text>
+                              </div>
+                        ))}
+                  </div>
+                  <Button appearance="primary" className={styles.fullWidth} size="large" style={{ borderRadius: '999px' }}>
+                        Subscribe — ₦5,000 / month
+                  </Button>
             </div>
-            <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                        Membership Required
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed px-2">
-                        You need an active subscription to earn from
-                        micro-tasks. Join the Earners Club and start earning
-                        today.
-                  </p>
-            </div>
-            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 text-left space-y-2">
-                  {[
-                        'Access all active jobs',
-                        'Instant payout on approval',
-                        'Priority review queue',
-                  ].map((f) => (
-                        <div
-                              key={f}
-                              className="flex items-center gap-2 text-xs text-blue-800"
-                        >
-                              <Check
-                                    size={12}
-                                    className="text-blue-500 shrink-0"
-                              />{' '}
-                              {f}
+      );
+};
+
+const ApplyCard: React.FC<{ job: Job; error: string; onApply: () => void }> = ({ job, error, onApply }) => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm)}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <Text size={400} weight="semibold" block>Ready to start?</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                              Click below to claim a slot. You have until{' '}
+                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
+                                    {job.expires_at ? new Date(job.expires_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : 'expiry'}
+                              </Text>{' '}
+                              to submit your proof.
+                        </Text>
+                  </div>
+
+                  <div className={styles.payoutHighlight}>
+                        <Text size={100} weight="semibold" style={{ color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                              Guaranteed Payout
+                        </Text>
+                        <span className={styles.payoutAmount}>{formatCurrency(job.payout_amount, job.payout_currency)}</span>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                              {job.auto_approve ? 'Auto-approved · instant wallet credit' : 'Manual review · up to 24h'}
+                        </Text>
+                  </div>
+
+                  {error && (
+                        <div className={styles.errorBox}>
+                              <ErrorCircleRegular fontSize={14} style={{ color: tokens.colorStatusDangerForeground3, flexShrink: 0, marginTop: 2 }} />
+                              <Text size={100} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
                         </div>
-                  ))}
-            </div>
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-full transition-all shadow-md shadow-blue-600/10 text-sm font-semibold cursor-pointer">
-                  Subscribe — ₦5,000 / month
-            </button>
-      </div>
-);
+                  )}
 
-const ApplyCard: React.FC<{ job: Job; error: string; onApply: () => void }> = ({
-      job,
-      error,
-      onApply,
-}) => (
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 space-y-5">
-            <div className="space-y-1">
-                  <h3 className="text-base font-semibold text-slate-900">
-                        Ready to start?
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                        Click below to claim a slot. Once claimed, you'll have
-                        until{' '}
-                        <span className="font-semibold text-slate-700">
-                              {job.expires_at
-                                    ? new Date(
-                                            job.expires_at
-                                      ).toLocaleDateString('en-NG', {
-                                            day: 'numeric',
-                                            month: 'short',
-                                      })
-                                    : 'expiry'}
-                        </span>{' '}
-                        to submit your proof.
-                  </p>
-            </div>
+                  <Button
+                        appearance="primary"
+                        size="large"
+                        icon={<ChevronRightRegular />}
+                        iconPosition="after"
+                        onClick={onApply}
+                        className={styles.fullWidth}
+                        style={{ borderRadius: '999px', justifyContent: 'center' }}
+                  >
+                        Claim Slot & Start Task
+                  </Button>
 
-            {/* Payout highlight */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100 text-center">
-                  <span className="block text-[10px] uppercase tracking-widest text-blue-400 font-semibold mb-1">
-                        Guaranteed Payout
-                  </span>
-                  <span className="text-3xl font-black text-slate-900 font-mono">
-                        {formatCurrency(job.payout_amount, job.payout_currency)}
-                  </span>
-                  <span className="block text-xs text-slate-400 mt-1">
-                        {job.auto_approve
-                              ? 'Auto-approved · instant wallet credit'
-                              : 'Manual review · up to 24h'}
-                  </span>
-            </div>
-
-            {error && (
-                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 flex items-start gap-2">
-                        <AlertCircle
-                              size={14}
-                              className="text-red-400 shrink-0 mt-0.5"
-                        />
-                        <p className="text-xs text-red-700">{error}</p>
-                  </div>
-            )}
-
-            <button
-                  onClick={onApply}
-                  className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white py-4 rounded-full font-semibold text-sm transition-all shadow-lg shadow-blue-600/15 cursor-pointer flex items-center justify-center gap-2"
-            >
-                  Claim Slot & Start Task <ChevronRight size={16} />
-            </button>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1.5">
-                        <Users size={11} /> {job.total_slots - job.filled_slots}{' '}
-                        slots left
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                        <Eye size={11} /> {job.views_count} views
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                        <ShieldCheck size={11} /> Escrow protected
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                        {job.auto_approve ? (
-                              <>
-                                    <Zap
-                                          size={11}
-                                          className="text-emerald-500"
-                                    />{' '}
-                                    Auto-approved
-                              </>
-                        ) : (
-                              <>
-                                    <Clock size={11} /> Manual review
-                              </>
-                        )}
+                  <div className={styles.metaGrid}>
+                        {[
+                              { icon: <PeopleRegular fontSize={12} />, label: `${job.total_slots - job.filled_slots} slots left` },
+                              { icon: <EyeRegular fontSize={12} />, label: `${job.views_count} views` },
+                              { icon: <ShieldCheckmarkRegular fontSize={12} />, label: 'Escrow protected' },
+                              job.auto_approve
+                                    ? { icon: <FlashRegular fontSize={12} style={{ color: '#16a34a' }} />, label: 'Auto-approved' }
+                                    : { icon: <ClockRegular fontSize={12} />, label: 'Manual review' },
+                        ].map(({ icon, label }) => (
+                              <div key={label} className={styles.metaItem}>
+                                    {icon}
+                                    <Text size={100}>{label}</Text>
+                              </div>
+                        ))}
                   </div>
             </div>
-      </div>
-);
+      );
+};
 
-const TransitionCard: React.FC<{ label: string; sub: string }> = ({
-      label,
-      sub,
-}) => (
-      <div className="bg-white rounded-3xl p-8 border border-slate-200/60 flex flex-col items-center justify-center gap-4 min-h-[220px]">
-            <div className="relative w-12 h-12 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin" />
-                  <Sparkles size={16} className="text-blue-500" />
+const TransitionCard: React.FC<{ label: string; sub: string }> = ({ label, sub }) => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm, styles.transitionCard)}>
+                  <Spinner size="medium" label={label} labelPosition="below" />
+                  <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{sub}</Text>
             </div>
-            <div className="text-center space-y-1">
-                  <p className="text-sm font-semibold text-slate-800">
-                        {label}
-                  </p>
-                  <p className="text-xs text-slate-400">{sub}</p>
-            </div>
-      </div>
-);
+      );
+};
 
-const SubmittedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({
-      job,
-      onFindMore,
-}) => (
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-5 animate-in zoom-in-95 duration-300">
-            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
-                  <CheckCircle2 size={28} className="text-emerald-500" />
+const SubmittedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, onFindMore }) => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm)} style={{ textAlign: 'center', alignItems: 'center' }}>
+                  <div className={styles.iconBoxGreen}>
+                        <CheckmarkCircleRegular fontSize={28} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Text size={400} weight="semibold" block>Proof Submitted!</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                              Your verification has been securely recorded.{' '}
+                              {job.auto_approve
+                                    ? 'Your wallet will be credited automatically.'
+                                    : `You'll receive ${formatCurrency(job.payout_amount, job.payout_currency)} once approved.`}
+                        </Text>
+                  </div>
+                  <div className={styles.successList}>
+                        {[
+                              job.auto_approve ? 'Payout processing automatically' : 'Under review · up to 24 hours',
+                              'Notification sent to your account',
+                              'Check your wallet for the credit',
+                        ].map((line) => (
+                              <div key={line} className={styles.successItem}>
+                                    <CheckmarkRegular fontSize={12} style={{ color: '#16a34a', flexShrink: 0 }} />
+                                    <Text size={100}>{line}</Text>
+                              </div>
+                        ))}
+                  </div>
+                  <Button appearance="secondary" className={styles.fullWidth} size="large" style={{ borderRadius: '999px' }} onClick={onFindMore}>
+                        Find More Jobs
+                  </Button>
             </div>
-            <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                        Proof Submitted!
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed px-2">
-                        Your verification has been securely recorded.{' '}
-                        {job.auto_approve
-                              ? 'Your wallet will be credited automatically.'
-                              : `You'll receive ${formatCurrency(job.payout_amount, job.payout_currency)} once approved.`}
-                  </p>
-            </div>
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left space-y-2">
-                  {[
-                        job.auto_approve
-                              ? 'Payout processing automatically'
-                              : 'Under review · up to 24 hours',
-                        'Notification sent to your account',
-                        'Check your wallet for the credit',
-                  ].map((line) => (
-                        <div
-                              key={line}
-                              className="flex items-center gap-2 text-xs text-slate-600"
-                        >
-                              <Check
-                                    size={12}
-                                    className="text-emerald-500 shrink-0"
-                              />{' '}
-                              {line}
-                        </div>
-                  ))}
-            </div>
-            <button
-                  onClick={onFindMore}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
-            >
-                  Find More Jobs
-            </button>
-      </div>
-);
+      );
+};
 
-const AlreadyAppliedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({
-      job,
-      onFindMore,
-}) => (
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-5">
-            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto border border-blue-100">
-                  <CheckCircle2 size={28} className="text-blue-500" />
+const AlreadyAppliedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, onFindMore }) => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm)} style={{ textAlign: 'center', alignItems: 'center' }}>
+                  <div className={styles.iconBoxBlue}>
+                        <CheckmarkCircleRegular fontSize={28} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Text size={400} weight="semibold" block>Already Submitted</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                              You've already submitted proof for this job.{' '}
+                              {job.auto_approve ? 'Your payout is being processed.' : "It's under review — you'll be notified once approved."}
+                        </Text>
+                  </div>
+                  <Button appearance="secondary" className={styles.fullWidth} style={{ borderRadius: '999px' }} onClick={onFindMore}>
+                        Browse More Jobs
+                  </Button>
             </div>
-            <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                        Already Submitted
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed px-2">
-                        You've already submitted proof for this job.
-                        {job.auto_approve
-                              ? ' Your payout is being processed.'
-                              : "It's under review — you'll be notified once approved."}
-                  </p>
-            </div>
-            <button
-                  onClick={onFindMore}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
-            >
-                  Browse More Jobs
-            </button>
-      </div>
-);
+      );
+};
 
-const SlotFullCard: React.FC<{ job: Job; onFindMore: () => void }> = ({
-      job,
-      onFindMore,
-}) => (
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 text-center space-y-5">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto border border-slate-200">
-                  <Users size={24} className="text-slate-400" />
+const SlotFullCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, onFindMore }) => {
+      const styles = useStyles();
+      return (
+            <div className={mergeClasses(styles.card, styles.cardSm)} style={{ textAlign: 'center', alignItems: 'center' }}>
+                  <div className={styles.iconBoxSlate}>
+                        <PeopleRegular fontSize={24} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Text size={400} weight="semibold" block>All Slots Filled</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                              All {job.total_slots} slots for this job have been claimed. Check out similar jobs in the marketplace.
+                        </Text>
+                  </div>
+                  <Button appearance="primary" className={styles.fullWidth} style={{ borderRadius: '999px' }} onClick={onFindMore}>
+                        Find Other Jobs
+                  </Button>
             </div>
-            <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                        All Slots Filled
-                  </h3>
-                  <p className="text-xs text-slate-500 leading-relaxed px-2">
-                        All {job.total_slots} slots for this job have been
-                        claimed. Check out similar jobs in the marketplace.
-                  </p>
-            </div>
-            <button
-                  onClick={onFindMore}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-full text-xs font-semibold transition-all cursor-pointer"
-            >
-                  Find Other Jobs
-            </button>
-      </div>
-);
+      );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROOF FORM — the main submission UI
+// PROOF FORM
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ProofFormProps {
@@ -1724,16 +1054,9 @@ interface ProofFormProps {
 }
 
 const ProofForm: React.FC<ProofFormProps> = ({
-      job,
-      proofForm,
-      setProofForm,
-      onSubmit,
-      onBeforeFile,
-      onAfterFile,
-      onClearBefore,
-      onClearAfter,
-      error,
+      job, proofForm, setProofForm, onSubmit, onBeforeFile, onAfterFile, onClearBefore, onClearAfter, error,
 }) => {
+      const styles = useStyles();
       const beforeRef = useRef<HTMLInputElement>(null);
       const afterRef = useRef<HTMLInputElement>(null);
 
@@ -1741,63 +1064,45 @@ const ProofForm: React.FC<ProofFormProps> = ({
             if (!proofForm.worker_social_url.trim()) return false;
             if (!proofForm.instructions_seen) return false;
             if (job.requires_screenshot && !proofForm.after_file) return false;
-            if (job.requires_before_proof && !proofForm.before_file)
-                  return false;
+            if (job.requires_before_proof && !proofForm.before_file) return false;
             return true;
       }, [proofForm, job]);
 
       return (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/60 space-y-5">
-                  <div className="border-b border-slate-50 pb-4">
-                        <h3 className="text-base font-semibold text-slate-900">
-                              Submit Task Proof
-                        </h3>
-                        <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                              Enter your verification handle and upload your
-                              screenshots below.
-                        </p>
+            <div className={mergeClasses(styles.card, styles.cardSm)}>
+                  <div className={styles.formHeader}>
+                        <Text size={400} weight="semibold" block>Submit Task Proof</Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                              Enter your verification handle and upload your screenshots below.
+                        </Text>
                   </div>
 
-                  <form onSubmit={onSubmit} className="space-y-5">
+                  <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
                         {/* Social URL */}
-                        <div className="space-y-2">
-                              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                              <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
                                     Your Account URL / Handle
-                              </label>
-                              <input
-                                    type="text"
+                              </Text>
+                              <Input
                                     required
                                     placeholder="e.g. https://instagram.com/username"
                                     value={proofForm.worker_social_url}
-                                    onChange={(e) =>
-                                          setProofForm((prev) => ({
-                                                ...prev,
-                                                worker_social_url:
-                                                      e.target.value,
-                                          }))
-                                    }
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs text-slate-800 transition-all"
+                                    onChange={(e) => setProofForm((prev) => ({ ...prev, worker_social_url: e.target.value }))}
+                                    style={{ width: '100%' }}
                               />
                         </div>
 
                         {/* Screenshots */}
                         {job.requires_screenshot && (
-                              <div className="space-y-4">
-                                    {/* Before screenshot */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
                                     {job.requires_before_proof && (
-                                          <div className="space-y-2">
-                                                <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                                                <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
                                                       1 — Before Screenshot
-                                                </span>
+                                                </Text>
                                                 <ScreenshotDropzone
-                                                      preview={
-                                                            proofForm.before_preview
-                                                      }
-                                                      fileName={
-                                                            proofForm
-                                                                  .before_file
-                                                                  ?.name ?? null
-                                                      }
+                                                      preview={proofForm.before_preview}
+                                                      fileName={proofForm.before_file?.name ?? null}
                                                       inputRef={beforeRef}
                                                       label="Attach initial snapshot"
                                                       hint="Taken before you performed the task"
@@ -1807,22 +1112,13 @@ const ProofForm: React.FC<ProofFormProps> = ({
                                                 />
                                           </div>
                                     )}
-
-                                    {/* After screenshot */}
-                                    <div className="space-y-2">
-                                          <span className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                                                {job.requires_before_proof
-                                                      ? '2 — After Screenshot'
-                                                      : 'Screenshot Proof'}
-                                          </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                                          <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                                                {job.requires_before_proof ? '2 — After Screenshot' : 'Screenshot Proof'}
+                                          </Text>
                                           <ScreenshotDropzone
-                                                preview={
-                                                      proofForm.after_preview
-                                                }
-                                                fileName={
-                                                      proofForm.after_file
-                                                            ?.name ?? null
-                                                }
+                                                preview={proofForm.after_preview}
+                                                fileName={proofForm.after_file?.name ?? null}
                                                 inputRef={afterRef}
                                                 label="Upload proof image"
                                                 hint="Shows you completed the task"
@@ -1835,74 +1131,49 @@ const ProofForm: React.FC<ProofFormProps> = ({
                         )}
 
                         {/* Status badge */}
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-2.5">
+                        <div className={styles.statusBadge}>
                               {job.auto_approve ? (
                                     <>
-                                          <Zap
-                                                size={13}
-                                                className="text-emerald-500 shrink-0"
-                                          />
-                                          <span className="text-[11px] text-slate-500">
-                                                Instant auto-approval configured
-                                          </span>
+                                          <FlashRegular fontSize={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Instant auto-approval configured</Text>
                                     </>
                               ) : (
                                     <>
-                                          <Clock
-                                                size={13}
-                                                className="text-indigo-400 shrink-0"
-                                          />
-                                          <span className="text-[11px] text-slate-500">
-                                                Manually reviewed · 24h SLA
-                                          </span>
+                                          <ClockRegular fontSize={14} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Manually reviewed · 24h SLA</Text>
                                     </>
                               )}
                         </div>
 
-                        {/* Instructions confirmation */}
-                        <label className="flex items-start gap-2.5 cursor-pointer group">
-                              <div className="mt-0.5 shrink-0">
-                                    <input
-                                          type="checkbox"
-                                          checked={proofForm.instructions_seen}
-                                          onChange={(e) =>
-                                                setProofForm((prev) => ({
-                                                      ...prev,
-                                                      instructions_seen:
-                                                            e.target.checked,
-                                                }))
-                                          }
-                                          className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-                                    />
-                              </div>
-                              <span className="text-[11px] text-slate-500 leading-relaxed group-hover:text-slate-700 transition-colors">
-                                    I have read the instructions, performed the
-                                    task on the platform, and the screenshots
-                                    I'm uploading accurately reflect my
-                                    submission.
-                              </span>
-                        </label>
+                        {/* Instructions checkbox */}
+                        <Checkbox
+                              checked={proofForm.instructions_seen}
+                              onChange={(_, data) => setProofForm((prev) => ({ ...prev, instructions_seen: !!data.checked }))}
+                              label={
+                                    <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                                          I have read the instructions, performed the task on the platform, and the screenshots I'm uploading accurately reflect my submission.
+                                    </Text>
+                              }
+                        />
 
                         {/* Error */}
                         {error && (
-                              <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
-                                    <AlertCircle
-                                          size={13}
-                                          className="text-red-400 shrink-0 mt-0.5"
-                                    />
-                                    <p className="text-[11px] text-red-700 leading-relaxed">
-                                          {error}
-                                    </p>
+                              <div className={styles.errorBox}>
+                                    <ErrorCircleRegular fontSize={14} style={{ color: tokens.colorStatusDangerForeground3, flexShrink: 0, marginTop: 2 }} />
+                                    <Text size={100} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
                               </div>
                         )}
 
-                        <button
+                        <Button
                               type="submit"
+                              appearance="primary"
+                              size="large"
                               disabled={!isValid}
-                              className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-full font-semibold text-sm transition-all shadow-md shadow-blue-600/10 cursor-pointer"
+                              className={styles.fullWidth}
+                              style={{ borderRadius: '999px', justifyContent: 'center' }}
                         >
                               Finish & Submit Task
-                        </button>
+                        </Button>
                   </form>
             </div>
       );
@@ -1924,78 +1195,45 @@ interface DropzoneProps {
 }
 
 const ScreenshotDropzone: React.FC<DropzoneProps> = ({
-      preview,
-      fileName,
-      inputRef,
-      label,
-      hint,
-      onFile,
-      onClear,
-      inputId,
+      preview, fileName, inputRef, label, hint, onFile, onClear, inputId,
 }) => {
+      const styles = useStyles();
+
       const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) onFile(file);
-            // Reset input so same file can be reselected after clear
             e.target.value = '';
       };
 
       return (
-            <div className="relative">
-                  <input
-                        ref={inputRef}
-                        id={inputId}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleChange}
-                  />
-
+            <div>
+                  <input ref={inputRef} id={inputId} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChange} />
                   {preview ? (
-                        // File selected — show preview
-                        <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden border border-emerald-200 shrink-0">
-                                    <img
-                                          src={preview}
-                                          className="w-full h-full object-cover"
-                                          alt="Preview"
-                                    />
+                        <div className={styles.dropzonePreview}>
+                              <div className={styles.previewThumb}>
+                                    <img src={preview} className={styles.previewThumbImg} alt="Preview" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-800 truncate">
-                                          {fileName}
-                                    </p>
-                                    <p className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5">
-                                          <Check size={10} /> Ready to submit
-                                    </p>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                    <Text size={100} weight="semibold" truncate block style={{ color: tokens.colorNeutralForeground1 }}>{fileName}</Text>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                          <CheckmarkRegular fontSize={10} style={{ color: '#16a34a' }} />
+                                          <Text size={100} style={{ color: '#16a34a' }}>Ready to submit</Text>
+                                    </div>
                               </div>
-                              <button
-                                    type="button"
+                              <Button
+                                    appearance="subtle"
+                                    size="small"
+                                    icon={<DismissRegular />}
                                     onClick={onClear}
-                                    className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0"
-                              >
-                                    <X size={13} />
-                              </button>
+                                    style={{ minWidth: 'unset', borderRadius: tokens.borderRadiusMedium }}
+                              />
                         </div>
                   ) : (
-                        // No file — show dropzone
-                        <label
-                              htmlFor={inputId}
-                              className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 rounded-xl cursor-pointer transition-all group min-h-[90px]"
-                        >
-                              <Camera
-                                    size={20}
-                                    className="text-slate-300 group-hover:text-blue-400 transition-colors mb-2"
-                              />
-                              <span className="text-xs font-medium text-slate-600 group-hover:text-blue-600 transition-colors">
-                                    {label}
-                              </span>
-                              <span className="text-[10px] text-slate-400 mt-0.5">
-                                    {hint}
-                              </span>
-                              <span className="text-[9px] text-slate-300 mt-1">
-                                    JPEG · PNG · up to 5MB
-                              </span>
+                        <label htmlFor={inputId} className={styles.dropzone}>
+                              <CameraRegular fontSize={22} style={{ color: tokens.colorNeutralForeground3, marginBottom: 6 }} />
+                              <Text size={200} weight="medium" style={{ color: tokens.colorNeutralForeground2 }}>{label}</Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 2 }}>{hint}</Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground4, marginTop: 4 }}>JPEG · PNG · up to 5MB</Text>
                         </label>
                   )}
             </div>
@@ -2013,97 +1251,57 @@ interface JobHeroCardProps {
       slotsLeft: number;
 }
 
-const JobHeroCard: React.FC<JobHeroCardProps> = ({
-      job,
-      platformInfo,
-      progressPercent,
-      slotsLeft,
-}) => (
-      <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden p-6 md:p-8 space-y-6 relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-center gap-4">
-                  <div
-                        className={`p-3 h-14 w-14 rounded-2xl text-white bg-gradient-to-tr ${platformInfo.color} overflow-hidden shadow-inner flex items-center justify-center shrink-0`}
-                  >
-                        <img
-                              src={
-                                    job.platforms?.logo_url ??
-                                    'https://placehold.co/100x100'
-                              }
-                              className="h-full w-full object-cover rounded-lg"
-                              alt={job.platforms?.name ?? 'Platform'}
-                        />
-                  </div>
-                  <div>
-                        <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                              Escrow Protected
-                        </span>
-                        <h3 className="text-lg font-semibold text-slate-900">
-                              Multi-Sig Escrow Shield
-                        </h3>
-                  </div>
-            </div>
-
-            <p className="text-slate-600 text-sm leading-relaxed">
-                  {job.description}
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-100">
-                  {[
-                        {
-                              label: 'Guaranteed Payout',
-                              value: formatCurrency(
-                                    job.payout_amount,
-                                    job.payout_currency
-                              ),
-                        },
-                        {
-                              label: 'Total Slots',
-                              value: `${job.total_slots} Slots`,
-                        },
-                        {
-                              label: 'Slots Remaining',
-                              value: `${slotsLeft} Left`,
-                        },
-                        {
-                              label: 'Task Views',
-                              value: job.views_count.toString(),
-                        },
-                  ].map(({ label, value }) => (
-                        <div
-                              key={label}
-                              className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
-                        >
-                              <span className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">
-                                    {label}
-                              </span>
-                              <span className="text-sm font-black text-slate-900 font-mono">
-                                    {value}
-                              </span>
+const JobHeroCard: React.FC<JobHeroCardProps> = ({ job, platformInfo, progressPercent, slotsLeft }) => {
+      const styles = useStyles();
+      return (
+            <div className={styles.card}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalL }}>
+                        <div className={styles.platformLogo} style={{ background: platformInfo.gradient, padding: 10 }}>
+                              <img
+                                    src={job.platforms?.logo_url ?? 'https://placehold.co/100x100'}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: tokens.borderRadiusMedium }}
+                                    alt={job.platforms?.name ?? 'Platform'}
+                              />
                         </div>
-                  ))}
-            </div>
+                        <div>
+                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.08em' }} block>
+                                    Escrow Protected
+                              </Text>
+                              <Text size={400} weight="semibold" block>Multi-Sig Escrow Shield</Text>
+                        </div>
+                  </div>
 
-            <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
-                        <span className="flex items-center gap-1.5">
-                              <Users size={13} className="text-slate-400" />{' '}
-                              Slots Utilization
-                        </span>
-                        <span className="text-slate-800">
-                              {progressPercent}% Filled
-                        </span>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground2, lineHeight: '1.6' }}>
+                        {job.description}
+                  </Text>
+
+                  <div className={styles.statsGrid}>
+                        {[
+                              { label: 'Guaranteed Payout', value: formatCurrency(job.payout_amount, job.payout_currency) },
+                              { label: 'Total Slots', value: `${job.total_slots} Slots` },
+                              { label: 'Slots Remaining', value: `${slotsLeft} Left` },
+                              { label: 'Task Views', value: String(job.views_count) },
+                        ].map(({ label, value }) => (
+                              <div key={label} className={styles.statCell}>
+                                    <Text size={100} style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</Text>
+                                    <span className={styles.statValue}>{value}</span>
+                              </div>
+                        ))}
                   </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                              className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-700"
-                              style={{ width: `${progressPercent}%` }}
-                        />
+
+                  <div className={styles.progressRow}>
+                        <div className={styles.progressLabel}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <PeopleRegular fontSize={13} style={{ color: tokens.colorNeutralForeground3 }} />
+                                    <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>Slots Utilization</Text>
+                              </div>
+                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>{progressPercent}% Filled</Text>
+                        </div>
+                        <ProgressBar value={progressPercent / 100} thickness="medium" />
                   </div>
             </div>
-      </div>
-);
+      );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INSTRUCTION CARD
@@ -2114,167 +1312,155 @@ interface InstructionCardProps {
       platformInfo: PlatformStyle;
 }
 
-const InstructionCard: React.FC<InstructionCardProps> = ({
-      job,
-      platformInfo,
-}) => (
-      <div className="bg-white rounded-3xl border border-slate-200/60 p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
-                        <FileText size={17} />
-                  </div>
-                  <h3 className="text-base font-semibold text-slate-900">
-                        Earner Audit Requirements
-                  </h3>
-            </div>
+const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) => {
+      const styles = useStyles();
 
-            <div className="space-y-5">
-                  {[
-                        {
-                              n: '01',
-                              title: 'Perform Social Operation',
-                              body: 'Navigate to the platform target and complete the physical task (follow, like, comment, etc.).',
-                              cta: (
-                                    <a
-                                          href={job.target_url}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className={`inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-tr ${platformInfo.color} text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-all shadow-md mt-1`}
-                                    >
-                                          Open task on {job.platforms?.name}{' '}
-                                          <ExternalLink size={12} />
-                                    </a>
-                              ),
-                        },
-                        {
-                              n: '02',
-                              title: 'Document Proof of Completion',
-                              body: 'Take the required screenshots before and after completing the task.',
-                              cta: job.proof_instructions ? (
-                                    <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl text-xs text-amber-900 leading-relaxed mt-2">
-                                          <span className="font-semibold flex items-center gap-1.5 mb-1.5">
-                                                <AlertCircle
-                                                      size={13}
-                                                      className="text-amber-600"
-                                                />{' '}
-                                                Verification Rules:
-                                          </span>
-                                          <p className="whitespace-pre-wrap font-medium">
-                                                {job.proof_instructions}
-                                          </p>
-                                    </div>
-                              ) : null,
-                        },
-                        {
-                              n: '03',
-                              title: 'Submit Verification Details',
-                              body: 'Enter your social handle and attach the screenshot evidence in the sidebar form to trigger your payout review.',
-                              cta: null,
-                        },
-                  ].map(({ n, title, body, cta }) => (
-                        <div key={n} className="flex gap-4 items-start">
-                              <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 shrink-0">
-                                    {n}
+      const steps = [
+            {
+                  n: '01',
+                  title: 'Perform Social Operation',
+                  body: 'Navigate to the platform target and complete the physical task (follow, like, comment, etc.).',
+                  cta: (
+                        <a
+                              href={job.target_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '8px 14px',
+                                    background: platformInfo.gradient,
+                                    color: '#fff',
+                                    fontSize: tokens.fontSizeBase100,
+                                    fontWeight: tokens.fontWeightSemibold,
+                                    borderRadius: tokens.borderRadiusMedium,
+                                    textDecoration: 'none',
+                                    marginTop: 4,
+                              }}
+                        >
+                              Open task on {job.platforms?.name}
+                              <OpenRegular fontSize={12} />
+                        </a>
+                  ),
+            },
+            {
+                  n: '02',
+                  title: 'Document Proof of Completion',
+                  body: 'Take the required screenshots before and after completing the task.',
+                  cta: job.proof_instructions ? (
+                        <div className={styles.warningBox}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <ErrorCircleRegular fontSize={13} style={{ color: '#d97706' }} />
+                                    <Text size={100} weight="semibold" style={{ color: '#92400e' }}>Verification Rules:</Text>
                               </div>
-                              <div className="flex-1 pt-1 space-y-1.5">
-                                    <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wide">
-                                          {title}
-                                    </h4>
-                                    <p className="text-xs text-slate-500 leading-relaxed">
-                                          {body}
-                                    </p>
-                                    {cta}
-                              </div>
+                              <Text size={100} style={{ color: '#92400e', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{job.proof_instructions}</Text>
                         </div>
-                  ))}
-            </div>
+                  ) : null,
+            },
+            {
+                  n: '03',
+                  title: 'Submit Verification Details',
+                  body: 'Enter your social handle and attach the screenshot evidence in the sidebar form to trigger your payout review.',
+                  cta: null,
+            },
+      ];
 
-            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center gap-3.5">
-                  <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100 shrink-0">
-                        <ShieldCheck size={17} />
+      return (
+            <div className={styles.card}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                        <div className={styles.iconBoxBlueSmall}>
+                              <DocumentRegular fontSize={17} />
+                        </div>
+                        <Text size={400} weight="semibold">Earner Audit Requirements</Text>
                   </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                        {steps.map(({ n, title, body, cta }) => (
+                              <div key={n} className={styles.stepRow}>
+                                    <div className={styles.stepNum}>{n}</div>
+                                    <div className={styles.stepBody}>
+                                          <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', color: tokens.colorNeutralForeground1 }}>
+                                                {title}
+                                          </Text>
+                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.6' }}>{body}</Text>
+                                          {cta}
+                                    </div>
+                              </div>
+                        ))}
+                  </div>
+
+                  <div className={styles.escrowShield}>
+                        <div className={styles.escrowIcon}>
+                              <ShieldCheckmarkRegular fontSize={17} />
+                        </div>
+                        <div>
+                              <Text size={200} weight="semibold" block>Instant Escrow Release Shield</Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5', marginTop: 4, display: 'block' }}>
+                                    Your payment is fully locked in escrow. Submissions are verified by system parameters or human review within 24 hours.
+                              </Text>
+                        </div>
+                  </div>
+            </div>
+      );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PageHeader: React.FC<{ job: Job; platformInfo: PlatformStyle }> = ({ job, platformInfo }) => {
+      const styles = useStyles();
+      return (
+            <div className={styles.header}>
                   <div>
-                        <h4 className="text-xs font-semibold text-slate-900 leading-none">
-                              Instant Escrow Release Shield
-                        </h4>
-                        <p className="text-[11px] text-slate-400 mt-1 leading-normal">
-                              Your payment is fully locked in escrow.
-                              Submissions are verified by system parameters or
-                              human review within 24 hours.
-                        </p>
+                        <Text size={500} weight="semibold" style={{ color: tokens.colorNeutralForeground1, letterSpacing: '-0.01em' }} block>
+                              {job.title}
+                        </Text>
+                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                              Escrow ID:{' '}
+                              <span className={styles.escrowId}>{job.id}</span>
+                        </Text>
+                  </div>
+                  <div className={styles.headerBadges}>
+                        <Badge
+                              appearance="filled"
+                              style={{ backgroundColor: platformInfo.badgeBg, color: platformInfo.badgeFg, border: `1px solid ${platformInfo.accentColor}22` }}
+                        >
+                              {job.platforms?.name} Verified
+                        </Badge>
+                        <Badge appearance="filled" color="informative">Active</Badge>
                   </div>
             </div>
-      </div>
-);
+      );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HEADER
+// LOADING / OVERLAY STATES
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Header: React.FC<{ job: Job; platformInfo: PlatformStyle }> = ({
-      job,
-      platformInfo,
-}) => (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-                  <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight leading-tight">
-                        {job.title}
-                  </h1>
-                  <p className="text-xs text-slate-400 font-medium mt-1">
-                        Escrow ID:{' '}
-                        <span className="font-mono text-slate-600 select-all">
-                              {job.id}
-                        </span>
-                  </p>
+const PageLoadingState: React.FC = () => {
+      const styles = useStyles();
+      return (
+            <div className={styles.pageLoading}>
+                  <Spinner size="medium" label="Loading job details…" labelPosition="below" />
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-                  <span
-                        className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border ${platformInfo.bg} ${platformInfo.text} ${platformInfo.border}`}
-                  >
-                        {job.platforms?.name} Verified
-                  </span>
-                  <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 uppercase tracking-wider px-3 py-1.5 rounded-full border border-blue-100">
-                        Active
-                  </span>
-            </div>
-      </div>
-);
+      );
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LOADING STATES
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PageLoadingState: React.FC = () => (
-      <div className="min-h-[60vh] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin" />
-                  <p className="text-xs text-slate-400 font-medium">
-                        Loading job details…
-                  </p>
-            </div>
-      </div>
-);
-
-const UploadingState: React.FC = () => (
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[2200] flex items-center justify-center">
-            <div className="bg-white rounded-3xl p-8 max-w-xs w-full shadow-2xl border border-slate-100 flex flex-col items-center space-y-4">
-                  <div className="relative flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin" />
-                        <UploadCloud
-                              className="absolute text-blue-600"
-                              size={17}
-                        />
-                  </div>
-                  <div className="text-center space-y-1">
-                        <h4 className="text-sm font-semibold text-slate-900">
-                              Uploading Assets
-                        </h4>
-                        <p className="text-[11px] text-slate-400">
-                              Verifying file metadata structure…
-                        </p>
+const UploadingState: React.FC = () => {
+      const styles = useStyles();
+      return (
+            <div className={styles.overlay}>
+                  <div className={styles.overlayCard}>
+                        <Spinner size="large" />
+                        <div style={{ textAlign: 'center' }}>
+                              <Text size={300} weight="semibold" block>Uploading Assets</Text>
+                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>Verifying file metadata structure…</Text>
+                        </div>
                   </div>
             </div>
-      </div>
-);
+      );
+};
 
 export default JobDetail;

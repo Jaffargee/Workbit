@@ -14,10 +14,10 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({children, requiredProf
 
       const { isAuthenticated, user, profile, loading } = useAuth();
       const location = useLocation();
-
+      const auth_paths = ["/auth/signup", "/auth/login", "/auth/profile"]
       if (loading) {
             return (
-                  <div className="flex flex-col w-full h-[100vh] items-center justify-center py-10">
+                  <div className="flex flex-col w-full h-[100vh] items-center justify-center py-10 z-100">
                         <Loading />
                   </div>
             );
@@ -34,6 +34,12 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({children, requiredProf
                   return (
                         <Navigate to='/auth/profile' state={{ from: location.pathname }} replace />
                   )
+            }
+      }
+
+      if (isAuthenticated && profile) {
+            if(auth_paths.includes(location.pathname)) {
+                  return <Navigate to={'/dashboard'} state={{ from: location.pathname }} replace />
             }
       }
 

@@ -401,8 +401,7 @@ const PostJob: React.FC = () => {
 
             setLoading(true);
             try {
-                  const { data, error } = await supabase
-                        .from('jobs')
+                  const { data, error } = await supabase.from('jobs')
                         .insert({
                               user_id: profile?.user_id,
                               platform_id: form.platform_id,
@@ -413,8 +412,7 @@ const PostJob: React.FC = () => {
                               auto_approve: form.auto_approve,
                               requires_screenshot: form.requires_screenshot,
                               requires_before_proof: form.requires_before_proof,
-                              proof_instructions:
-                                    form.proof_instructions?.trim() || null,
+                              proof_instructions: form.proof_instructions?.trim() || null,
                               title: form.title.trim(),
                               description: form.description.trim(),
                               total_slots: form.total_slots,
@@ -427,17 +425,14 @@ const PostJob: React.FC = () => {
                         setSubmitError(error.message);
                         return;
                   }
-                  if (data?.success) {
+                  if (data) {
                         setSuccess({
-                              job_id: data.job_id,
-                              total_cost:
-                                    data.escrow_amount + data.platform_fee,
+                              job_id: data.id,
+                              total_cost: data.escrow_amount + data.platform_fee,
                         });
                   }
             } catch {
-                  setSubmitError(
-                        'An unexpected error occurred. Please try again.'
-                  );
+                  setSubmitError('An unexpected error occurred. Please try again.');
             } finally {
                   setLoading(false);
             }

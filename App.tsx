@@ -12,23 +12,44 @@ import Marketplace from './pages/Marketplace';
 import Job from './pages/Marketplace/Job';
 import ProtectedRoutes from './contexts/protected_routes';
 import Verified from './pages/Auth/Verified';
-import JobVerification from './pages/Marketplace/JobVerification';
-import JobDir from './pages/Marketplace/JobDir';
+import JobVerification from './pages/Jobs/JobVerification'
+import JobDir from './pages/Jobs/JobDir';
+import Jobs from './pages/Jobs';
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 
 const RenderLayout = ({ element }: { element: React.ReactNode }) => {
       return <Layout>{element}</Layout>
 }
 
+const customTheme = {
+      ...webLightTheme, // or webLightTheme
+      fontFamilyBase: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontFamilyMonospace: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+      fontFamilyNumeric: "'Inter', sans-serif",
+};
+
+
 const App: React.FC = () => {
       return (
             <AuthProvider>
-                  <FluentProvider theme={webLightTheme}>
+                  <FluentProvider theme={customTheme}>
                         <Routes>
                               <Route path="/" element={<LandingPage />} />
-                              <Route path="/auth/signup" element={<Auth type="register" />} />
-                              <Route path="/auth/login" element={<Auth type="login" />} />
-                              <Route path="/auth/profile" element={<Auth type="profile" />} />
+                              <Route path="/auth/signup" element={
+                                    <ProtectedRoutes>
+                                          <Auth type="register" />
+                                    </ProtectedRoutes>
+                              } />
+                              <Route path="/auth/login" element={
+                                    <ProtectedRoutes>
+                                          <Auth type="login" />
+                                    </ProtectedRoutes>
+                              } />
+                              <Route path="/auth/profile" element={
+                                    <ProtectedRoutes>
+                                          <Auth type="profile" />
+                                    </ProtectedRoutes>
+                              } />
                               
                               <Route path='/auth/workbit/email/verified' element={<Verified />} />
 
@@ -37,36 +58,41 @@ const App: React.FC = () => {
                                           <RenderLayout element={<Dashboard />} />
                                     </ProtectedRoutes>
                               } />
-                              <Route path="/post" element={
+                              <Route path="/jobs/post" element={
                                     <ProtectedRoutes>
                                           <RenderLayout element={<PostJob />} />
                                     </ProtectedRoutes>
                               } />
-                              <Route path="/wallet" element={<RenderLayout element={
+                              <Route path="/wallet" element={
                                     <ProtectedRoutes>
-                                          <Wallet />
+                                          <RenderLayout element={<Wallet />} />
                                     </ProtectedRoutes>
-                              } />} />
-                              <Route path="/marketplace" element={<RenderLayout element={
+                              } />
+                              <Route path="/marketplace" element={
                                     <ProtectedRoutes>
-                                          <Marketplace />
+                                          <RenderLayout element={<Marketplace />} />
                                     </ProtectedRoutes>
-                              } />} />
-                              <Route path="/marketplace/job_v/:job_id" element={<RenderLayout element={
+                              } />
+                              <Route path="/jobs/owner/:job_id/verify" element={
                                     <ProtectedRoutes>
-                                          <JobVerification />
+                                          <RenderLayout element={<JobVerification />} />
                                     </ProtectedRoutes>
-                              } />} />
-                              <Route path="/marketplace/owner/:job_id" element={<RenderLayout element={
+                              } />
+                              <Route path="/jobs/owner/:job_id" element={
                                     <ProtectedRoutes>
-                                          <JobDir />
+                                          <RenderLayout element={<JobDir />} />
                                     </ProtectedRoutes>
-                              } />} />
-                              <Route path="/marketplace/:job_id" element={<RenderLayout element={
+                              } />
+                              <Route path="/marketplace/:job_id" element={
                                     <ProtectedRoutes>
-                                          <Job />
+                                          <RenderLayout element={<Job />} />
                                     </ProtectedRoutes>
-                              } />} />
+                              } />
+                              <Route path="/jobs" element={
+                                    <ProtectedRoutes>
+                                          <RenderLayout element={<Jobs />} />
+                                    </ProtectedRoutes>
+                              } />
                         </Routes>
                   </FluentProvider>
             </AuthProvider>

@@ -25,10 +25,7 @@ export const AuthProvider = ({ children }: AuthContextProps) => {
                         .select(`
                               *, 
                               user_contacts(email, phone), 
-                              user_bank_accounts(account_name, bank_name, account_number, is_default, is_verified),
-                              wallet(*, wallet_deposits!wallet_deposits_wallet_id_fkey(*), wallet_transactions!wallet_transactions_wallet_id_fkey(*)),
-                              referral_rewards!referral_rewards_referrer_id_fkey(reward_amount, status),
-                              jobs(*)
+                              user_bank_accounts(account_name, bank_name, account_number, is_default, is_verified)
                         `)
                         .eq('user_id', userId)
                         .single();
@@ -46,30 +43,25 @@ export const AuthProvider = ({ children }: AuthContextProps) => {
       const getUserSession = useCallback(async () => {
             try {
                   const { data: { session }, error } = await supabase.auth.getSession();
-
                   if (error) {
                         const sessionError = ErrorService.handleSupabaseError(error, 'getUserSession');
                         setError(sessionError);
-                        setIsAuthenticated(false);
+                        setAuthNull();
                   }
-
                   if (session) {
                         setUser(session.user as SupabaseUser);
                         const profileData = await getUserProfile(session.user.id);
                         if (profileData && !('error' in profileData) && typeof profileData !== 'string') {
                               setProfile(profileData);
+                              setIsAuthenticated(true);
                         }
-                        setIsAuthenticated(true);
                   } else {
-                        setUser(null);
-                        setProfile(null);
-                        setIsAuthenticated(false);
+                        setAuthNull();
                   }
-
             } catch (err: any) {
                   const sessionError = ErrorService.handleSupabaseError(err, 'getUserSession');
                   setError(sessionError);
-                  setIsAuthenticated(false);
+                  setAuthNull();
             } finally {
                   setLoading(false);
             }
@@ -78,47 +70,40 @@ export const AuthProvider = ({ children }: AuthContextProps) => {
       const signOut = useCallback(async () => {
             try {
                   const { error: signOutError } = await supabase.auth.signOut();
-
                   if (signOutError) {
                         const authError = ErrorService.handleSupabaseError(signOutError, 'signOut');
                         setError(authError);
                   }
-
-                  // Clear all state
-                  setUser(null);
-                  setProfile(null);
-                  setError(null);
                   navigate('/auth/login');
-
+                  setAuthNull();
+                  setError(null);
             } catch (err: any) {
                   const authError = ErrorService.handleSupabaseError(err, 'signOut');
                   setError(authError);
             }
       }, []);
 
+      const setAuthNull = () => {
+            setIsAuthenticated(false);
+            setProfile(null);
+            setUser(null);
+      }
+
       useEffect(() => {
             getUserSession();
-
             const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
                   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                        setUser(session?.user as SupabaseUser);
                         if (session?.user) {
+                              setUser(session.user as SupabaseUser);
                               getUserProfile(session.user.id).then((data: any) => {
-                                    if (error) {
-                                          console.error("Profile fetch failed:", error.message);
-                                          setProfile(null);
-                                          return;
-                                    }
-                                    
-                                    // If data is null/empty, setProfile to null to avoid type mismatch
                                     setProfile(data as UserProfile || null);
                               });
+                              setIsAuthenticated(true);
+                        } else {
+                              setAuthNull();
                         }
-                        setIsAuthenticated(true);
                   } else if (event === 'SIGNED_OUT') {
-                        setUser(null);
-                        setProfile(null);
-                        setIsAuthenticated(false);
+                        setAuthNull();
                   }
             });
 

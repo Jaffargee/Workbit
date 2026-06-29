@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/authentication';
 import { supabase } from '@/server/supabase';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
@@ -43,6 +43,8 @@ import {
       GiftRegular,
       ChevronRightRegular,
 } from '@fluentui/react-icons';
+import { Loader2 } from 'lucide-react';
+import { useWallet } from '@/hooks/useWallet';
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -494,12 +496,13 @@ const Wallet: React.FC = () => {
             setStatusOpen(true);
       };
 
-      const balance = profile?.wallet?.balance ?? 0;
+      const { wallet, summary, loading, refresh } = useWallet();
 
+      
       return (
             <div className={styles.root}>
                   {/* Hero balance card */}
-                  <BalanceDashboard />
+                  <BalanceDashboard balanceLoading={loading} />
 
                   {/* Quick stats row */}
                   <div className={styles.statsRow}>
@@ -517,7 +520,7 @@ const Wallet: React.FC = () => {
                                     Total Earned
                               </Text>
                               <Text className={styles.statValue}>
-                                    ₦{balance.toLocaleString()}
+                                    ₦{summary?.current_balance.toLocaleString()}
                               </Text>
                         </div>
                         <div className={styles.statCard}>
@@ -575,6 +578,7 @@ const Wallet: React.FC = () => {
                   <div className={styles.midGrid}>
                         <ActionButtonContainer
                               triggerStatus={triggerStatus}
+                              fetchBalance={refresh}
                               onWithdraw={() =>
                                     triggerStatus(
                                           'error',
@@ -586,7 +590,7 @@ const Wallet: React.FC = () => {
                   </div>
 
                   {/* Spending overview */}
-                  <SpendingOverview balance={balance} />
+                  <SpendingOverview balance={summary?.current_balance ?? 0} />
 
                   {/* Transaction history */}
                   <div className={styles.txCard}>
@@ -642,11 +646,13 @@ const Wallet: React.FC = () => {
 
 // ─── Balance Dashboard ─────────────────────────────────────────────────────
 
-const BalanceDashboard: React.FC = () => {
+const BalanceDashboard: React.FC<{ balanceLoading: boolean }> = ({ balanceLoading }) => {
       const styles = useStyles();
       const { profile } = useAuth();
       const [hidden, setHidden] = useState(false);
-      const balance = profile?.wallet?.balance ?? 0;
+      
+      const { summary } = useWallet();
+      const balance = summary?.current_balance ?? 0;
 
       return (
             <div className={styles.balanceCard}>
@@ -691,13 +697,17 @@ const BalanceDashboard: React.FC = () => {
                                           Available Balance
                                     </span>
                                     <div className={styles.balanceAmountRow}>
-                                          <span
-                                                className={styles.balanceAmount}
-                                          >
-                                                {hidden
-                                                      ? '₦ ••••••'
-                                                      : `₦${balance.toLocaleString()}`}
-                                          </span>
+                                          {
+                                                balanceLoading ? <span><Loader2 className='animate-spin' /></span>
+                                                :
+                                                <span
+                                                      className={styles.balanceAmount}
+                                                >
+                                                      {hidden
+                                                            ? '₦ ••••••'
+                                                            : `₦${balance.toLocaleString()}`}
+                                                </span>
+                                          }
                                           <button
                                                 className={styles.eyeBtn}
                                                 onClick={() =>
@@ -949,8 +959,9 @@ const EarningsBreakdown: React.FC = () => {
 
 const ActionButtonContainer: React.FC<{
       onWithdraw?: () => void;
+      fetchBalance: () => void;
       triggerStatus: (type: 'success' | 'error', message: string) => void;
-}> = ({ onWithdraw, triggerStatus }) => {
+}> = ({ onWithdraw, triggerStatus, fetchBalance }) => {
       const styles = useStyles();
       const { profile, refreshUserProfile } = useAuth();
       const [amount, setAmount] = useState<number>(0);
@@ -988,6 +999,7 @@ const ActionButtonContainer: React.FC<{
                   { body: { transaction_id } }
             );
             if (error) throw new Error(error);
+            await fetchBalance()
             return data;
       };
 
@@ -999,6 +1011,7 @@ const ActionButtonContainer: React.FC<{
                               const verified = await verifyPayment(
                                     response.transaction_id
                               );
+                              console.log(verified)
                               if (verified.success) {
                                     await refreshUserProfile();
                                     triggerStatus(

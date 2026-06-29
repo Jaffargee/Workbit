@@ -44,7 +44,6 @@ export type JobType = 'LIKE' | 'FOLLOW' | 'COMMENT' | 'RETWEET' | 'SAVE' | 'SHAR
 
 export type JobStatus =
 | 'DRAFT'
-| 'PENDING_FUNDING'
 | 'ACTIVE'
 | 'PAUSED'
 | 'COMPLETED'
@@ -81,6 +80,7 @@ export interface UserProfile {
       referral_rewards: { referrer_id: string, reward_amount: number, status: string, referred_user_id: string }[] | null;
       user_bank_accounts: UserBankAccount[];
       wallet: Wallet;
+      wallet_balance_summary: any
       jobs: Job[] | null;
       created_at: string;
       updated_at: string;

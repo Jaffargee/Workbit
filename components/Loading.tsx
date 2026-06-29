@@ -1,5 +1,3 @@
-import { Loader2 } from 'lucide-react';
-import React from 'react';
 import workbitImg from '@/assets/workbit.webp';
 
 const Loading = () => {

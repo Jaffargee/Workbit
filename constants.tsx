@@ -19,6 +19,15 @@ export const PLATFORMSXL: { name: Platform; icon: React.ReactNode; color: string
       { name: 'YouTube', icon: <Youtube size={50} />, color: 'bg-red-600' },
 ];
 
+export const PLATFORM_COLORS: Record<string, string> = {
+      TikTok: '#010101',
+      Instagram: '#E1306C',
+      'Twitter / X': '#1DA1F2',
+      YouTube: '#FF0000',
+      Telegram: '#2481cc',
+};
+
+
 export const NigerianStates: NigerianState[] = [
       'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 
       'Bayelsa', 'Benue', 'Borno', 'Cross River', 'Delta', 

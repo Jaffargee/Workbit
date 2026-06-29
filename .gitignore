@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+Workbit-Workflow/
 
 # Editor directories and files
 .vscode/*
