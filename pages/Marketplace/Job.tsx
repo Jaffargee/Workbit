@@ -313,7 +313,7 @@ const useStyles = makeStyles({
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: tokens.fontWeightBold,
-            fontSize: tokens.fontSizeBase100,
+            fontSize: tokens.fontSizeBase200,
             color: tokens.colorNeutralForeground1,
             flexShrink: 0,
       },
@@ -381,7 +381,7 @@ const useStyles = makeStyles({
             alignItems: 'center',
             gap: '4px',
             color: tokens.colorNeutralForeground3,
-            fontSize: tokens.fontSizeBase100,
+            fontSize: tokens.fontSizeBase200,
       },
       featureList: {
             backgroundColor: '#eff6ff',
@@ -396,7 +396,7 @@ const useStyles = makeStyles({
             display: 'flex',
             alignItems: 'center',
             gap: tokens.spacingHorizontalXS,
-            fontSize: tokens.fontSizeBase100,
+            fontSize: tokens.fontSizeBase200,
             color: '#1e40af',
       },
       statusBadge: {
@@ -577,7 +577,7 @@ const useStyles = makeStyles({
             display: 'flex',
             alignItems: 'center',
             gap: tokens.spacingHorizontalXS,
-            fontSize: tokens.fontSizeBase100,
+            fontSize: tokens.fontSizeBase200,
             color: tokens.colorNeutralForeground2,
       },
 
@@ -749,7 +749,7 @@ const JobDetail: React.FC = () => {
                               <ErrorCircleRegular fontSize={28} />
                         </div>
                         <Text size={500} weight="semibold">Job Not Found</Text>
-                        <Text size={200} style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', maxWidth: 280 }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, textAlign: 'center', maxWidth: 280 }}>
                               This job may have expired or been removed from the marketplace.
                         </Text>
                         <Button
@@ -869,15 +869,15 @@ const NotSubscribedCard: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <Text size={400} weight="semibold" block>Membership Required</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                               You need an active subscription to earn from micro-tasks. Join the Earners Club and start earning today.
                         </Text>
                   </div>
                   <div className={styles.featureList} style={{ width: '100%' }}>
                         {['Access all active jobs', 'Instant payout on approval', 'Priority review queue'].map((f) => (
                               <div key={f} className={styles.featureItem}>
-                                    <CheckmarkRegular fontSize={14} color="#3b82f6" />
-                                    <Text size={100}>{f}</Text>
+                                    <CheckmarkRegular fontSize={18} color="#3b82f6" />
+                                    <Text size={300}>{f}</Text>
                               </div>
                         ))}
                   </div>
@@ -894,9 +894,9 @@ const ApplyCard: React.FC<{ job: Job; error: string; onApply: () => void }> = ({
             <div className={mergeClasses(styles.card, styles.cardSm)}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <Text size={400} weight="semibold" block>Ready to start?</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                               Click below to claim a slot. You have until{' '}
-                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
+                              <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
                                     {job.expires_at ? new Date(job.expires_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : 'expiry'}
                               </Text>{' '}
                               to submit your proof.
@@ -904,19 +904,19 @@ const ApplyCard: React.FC<{ job: Job; error: string; onApply: () => void }> = ({
                   </div>
 
                   <div className={styles.payoutHighlight}>
-                        <Text size={100} weight="semibold" style={{ color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        <Text size={300} weight="semibold" style={{ color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                               Guaranteed Payout
                         </Text>
                         <span className={styles.payoutAmount}>{formatCurrency(job.payout_amount, job.payout_currency)}</span>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
                               {job.auto_approve ? 'Auto-approved · instant wallet credit' : 'Manual review · up to 24h'}
                         </Text>
                   </div>
 
                   {error && (
                         <div className={styles.errorBox}>
-                              <ErrorCircleRegular fontSize={14} style={{ color: tokens.colorStatusDangerForeground3, flexShrink: 0, marginTop: 2 }} />
-                              <Text size={100} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
+                              <ErrorCircleRegular fontSize={18} style={{ color: tokens.colorStatusDangerForeground3, flexShrink: 0, marginTop: 2 }} />
+                              <Text size={300} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
                         </div>
                   )}
 
@@ -934,16 +934,16 @@ const ApplyCard: React.FC<{ job: Job; error: string; onApply: () => void }> = ({
 
                   <div className={styles.metaGrid}>
                         {[
-                              { icon: <PeopleRegular fontSize={12} />, label: `${job.total_slots - job.filled_slots} slots left` },
-                              { icon: <EyeRegular fontSize={12} />, label: `${job.views_count} views` },
-                              { icon: <ShieldCheckmarkRegular fontSize={12} />, label: 'Escrow protected' },
+                              { icon: <PeopleRegular fontSize={18} />, label: `${job.total_slots - job.filled_slots} slots left` },
+                              { icon: <EyeRegular fontSize={18} />, label: `${job.views_count} views` },
+                              { icon: <ShieldCheckmarkRegular fontSize={18} />, label: 'Escrow protected' },
                               job.auto_approve
-                                    ? { icon: <FlashRegular fontSize={12} style={{ color: '#16a34a' }} />, label: 'Auto-approved' }
-                                    : { icon: <ClockRegular fontSize={12} />, label: 'Manual review' },
+                                    ? { icon: <FlashRegular fontSize={18} style={{ color: '#16a34a' }} />, label: 'Auto-approved' }
+                                    : { icon: <ClockRegular fontSize={18} />, label: 'Manual review' },
                         ].map(({ icon, label }) => (
                               <div key={label} className={styles.metaItem}>
                                     {icon}
-                                    <Text size={100}>{label}</Text>
+                                    <Text size={300}>{label}</Text>
                               </div>
                         ))}
                   </div>
@@ -956,7 +956,7 @@ const TransitionCard: React.FC<{ label: string; sub: string }> = ({ label, sub }
       return (
             <div className={mergeClasses(styles.card, styles.cardSm, styles.transitionCard)}>
                   <Spinner size="medium" label={label} labelPosition="below" />
-                  <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{sub}</Text>
+                  <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>{sub}</Text>
             </div>
       );
 };
@@ -970,7 +970,7 @@ const SubmittedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, on
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <Text size={400} weight="semibold" block>Proof Submitted!</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                               Your verification has been securely recorded.{' '}
                               {job.auto_approve
                                     ? 'Your wallet will be credited automatically.'
@@ -984,8 +984,8 @@ const SubmittedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, on
                               'Check your wallet for the credit',
                         ].map((line) => (
                               <div key={line} className={styles.successItem}>
-                                    <CheckmarkRegular fontSize={12} style={{ color: '#16a34a', flexShrink: 0 }} />
-                                    <Text size={100}>{line}</Text>
+                                    <CheckmarkRegular fontSize={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+                                    <Text size={300}>{line}</Text>
                               </div>
                         ))}
                   </div>
@@ -1005,7 +1005,7 @@ const AlreadyAppliedCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ jo
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <Text size={400} weight="semibold" block>Already Submitted</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                               You've already submitted proof for this job.{' '}
                               {job.auto_approve ? 'Your payout is being processed.' : "It's under review — you'll be notified once approved."}
                         </Text>
@@ -1026,7 +1026,7 @@ const SlotFullCard: React.FC<{ job: Job; onFindMore: () => void }> = ({ job, onF
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <Text size={400} weight="semibold" block>All Slots Filled</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                               All {job.total_slots} slots for this job have been claimed. Check out similar jobs in the marketplace.
                         </Text>
                   </div>
@@ -1072,7 +1072,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
             <div className={mergeClasses(styles.card, styles.cardSm)}>
                   <div className={styles.formHeader}>
                         <Text size={400} weight="semibold" block>Submit Task Proof</Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
                               Enter your verification handle and upload your screenshots below.
                         </Text>
                   </div>
@@ -1080,7 +1080,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
                   <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
                         {/* Social URL */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
-                              <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                              <Text size={300} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
                                     Your Account URL / Handle
                               </Text>
                               <Input
@@ -1097,7 +1097,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
                               <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
                                     {job.requires_before_proof && (
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
-                                                <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                                                <Text size={300} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
                                                       1 — Before Screenshot
                                                 </Text>
                                                 <ScreenshotDropzone
@@ -1113,7 +1113,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
                                           </div>
                                     )}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
-                                          <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
+                                          <Text size={300} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: tokens.colorNeutralForeground2 }}>
                                                 {job.requires_before_proof ? '2 — After Screenshot' : 'Screenshot Proof'}
                                           </Text>
                                           <ScreenshotDropzone
@@ -1135,12 +1135,12 @@ const ProofForm: React.FC<ProofFormProps> = ({
                               {job.auto_approve ? (
                                     <>
                                           <FlashRegular fontSize={14} style={{ color: '#16a34a', flexShrink: 0 }} />
-                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Instant auto-approval configured</Text>
+                                          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>Instant auto-approval configured</Text>
                                     </>
                               ) : (
                                     <>
                                           <ClockRegular fontSize={14} style={{ color: '#6366f1', flexShrink: 0 }} />
-                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Manually reviewed · 24h SLA</Text>
+                                          <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>Manually reviewed · 24h SLA</Text>
                                     </>
                               )}
                         </div>
@@ -1150,7 +1150,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
                               checked={proofForm.instructions_seen}
                               onChange={(_, data) => setProofForm((prev) => ({ ...prev, instructions_seen: !!data.checked }))}
                               label={
-                                    <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
+                                    <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5' }}>
                                           I have read the instructions, performed the task on the platform, and the screenshots I'm uploading accurately reflect my submission.
                                     </Text>
                               }
@@ -1160,7 +1160,7 @@ const ProofForm: React.FC<ProofFormProps> = ({
                         {error && (
                               <div className={styles.errorBox}>
                                     <ErrorCircleRegular fontSize={14} style={{ color: tokens.colorStatusDangerForeground3, flexShrink: 0, marginTop: 2 }} />
-                                    <Text size={100} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
+                                    <Text size={300} style={{ color: tokens.colorStatusDangerForeground3 }}>{error}</Text>
                               </div>
                         )}
 
@@ -1214,10 +1214,10 @@ const ScreenshotDropzone: React.FC<DropzoneProps> = ({
                                     <img src={preview} className={styles.previewThumbImg} alt="Preview" />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                    <Text size={100} weight="semibold" truncate block style={{ color: tokens.colorNeutralForeground1 }}>{fileName}</Text>
+                                    <Text size={300} weight="semibold" truncate block style={{ color: tokens.colorNeutralForeground1 }}>{fileName}</Text>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                                           <CheckmarkRegular fontSize={10} style={{ color: '#16a34a' }} />
-                                          <Text size={100} style={{ color: '#16a34a' }}>Ready to submit</Text>
+                                          <Text size={300} style={{ color: '#16a34a' }}>Ready to submit</Text>
                                     </div>
                               </div>
                               <Button
@@ -1232,8 +1232,8 @@ const ScreenshotDropzone: React.FC<DropzoneProps> = ({
                         <label htmlFor={inputId} className={styles.dropzone}>
                               <CameraRegular fontSize={22} style={{ color: tokens.colorNeutralForeground3, marginBottom: 6 }} />
                               <Text size={200} weight="medium" style={{ color: tokens.colorNeutralForeground2 }}>{label}</Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 2 }}>{hint}</Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground4, marginTop: 4 }}>JPEG · PNG · up to 5MB</Text>
+                              <Text size={300} style={{ color: tokens.colorNeutralForeground3, marginTop: 2 }}>{hint}</Text>
+                              <Text size={300} style={{ color: tokens.colorNeutralForeground4, marginTop: 4 }}>JPEG · PNG · up to 5MB</Text>
                         </label>
                   )}
             </div>
@@ -1264,7 +1264,7 @@ const JobHeroCard: React.FC<JobHeroCardProps> = ({ job, platformInfo, progressPe
                               />
                         </div>
                         <div>
-                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.08em' }} block>
+                              <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.08em' }} block>
                                     Escrow Protected
                               </Text>
                               <Text size={400} weight="semibold" block>Multi-Sig Escrow Shield</Text>
@@ -1283,7 +1283,7 @@ const JobHeroCard: React.FC<JobHeroCardProps> = ({ job, platformInfo, progressPe
                               { label: 'Task Views', value: String(job.views_count) },
                         ].map(({ label, value }) => (
                               <div key={label} className={styles.statCell}>
-                                    <Text size={100} style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</Text>
+                                    <Text size={300} style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</Text>
                                     <span className={styles.statValue}>{value}</span>
                               </div>
                         ))}
@@ -1293,11 +1293,11 @@ const JobHeroCard: React.FC<JobHeroCardProps> = ({ job, platformInfo, progressPe
                         <div className={styles.progressLabel}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <PeopleRegular fontSize={13} style={{ color: tokens.colorNeutralForeground3 }} />
-                                    <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>Slots Utilization</Text>
+                                    <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground3 }}>Slots Utilization</Text>
                               </div>
-                              <Text size={100} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>{progressPercent}% Filled</Text>
+                              <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground1 }}>{progressPercent}% Filled</Text>
                         </div>
-                        <ProgressBar value={progressPercent / 100} thickness="medium" />
+                        <ProgressBar value={progressPercent / 300} thickness="medium" />
                   </div>
             </div>
       );
@@ -1332,7 +1332,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
                                     padding: '8px 14px',
                                     background: platformInfo.gradient,
                                     color: '#fff',
-                                    fontSize: tokens.fontSizeBase100,
+                                    fontSize: tokens.fontSizeBase200,
                                     fontWeight: tokens.fontWeightSemibold,
                                     borderRadius: tokens.borderRadiusMedium,
                                     textDecoration: 'none',
@@ -1340,7 +1340,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
                               }}
                         >
                               Open task on {job.platforms?.name}
-                              <OpenRegular fontSize={12} />
+                              <OpenRegular fontSize={18} />
                         </a>
                   ),
             },
@@ -1351,10 +1351,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
                   cta: job.proof_instructions ? (
                         <div className={styles.warningBox}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <ErrorCircleRegular fontSize={13} style={{ color: '#d97706' }} />
-                                    <Text size={100} weight="semibold" style={{ color: '#92400e' }}>Verification Rules:</Text>
+                                    <ErrorCircleRegular fontSize={18 } style={{ color: '#d97706' }} />
+                                    <Text size={300} weight="semibold" style={{ color: '#92400e' }}>Verification Rules:</Text>
                               </div>
-                              <Text size={100} style={{ color: '#92400e', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{job.proof_instructions}</Text>
+                              <Text size={300} style={{ color: '#92400e', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{job.proof_instructions}</Text>
                         </div>
                   ) : null,
             },
@@ -1370,7 +1370,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
             <div className={styles.card}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
                         <div className={styles.iconBoxBlueSmall}>
-                              <DocumentRegular fontSize={17} />
+                              <DocumentRegular fontSize={18} />
                         </div>
                         <Text size={400} weight="semibold">Earner Audit Requirements</Text>
                   </div>
@@ -1380,10 +1380,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
                               <div key={n} className={styles.stepRow}>
                                     <div className={styles.stepNum}>{n}</div>
                                     <div className={styles.stepBody}>
-                                          <Text size={100} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', color: tokens.colorNeutralForeground1 }}>
+                                          <Text size={300} weight="semibold" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', color: tokens.colorNeutralForeground1 }}>
                                                 {title}
                                           </Text>
-                                          <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.6' }}>{body}</Text>
+                                          <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.6' }}>{body}</Text>
                                           {cta}
                                     </div>
                               </div>
@@ -1395,8 +1395,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ job, platformInfo }) 
                               <ShieldCheckmarkRegular fontSize={17} />
                         </div>
                         <div>
-                              <Text size={200} weight="semibold" block>Instant Escrow Release Shield</Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5', marginTop: 4, display: 'block' }}>
+                              <Text size={300} weight="semibold" block>Instant Escrow Release Shield</Text>
+                              <Text size={300} style={{ color: tokens.colorNeutralForeground3, lineHeight: '1.5', marginTop: 4, display: 'block' }}>
                                     Your payment is fully locked in escrow. Submissions are verified by system parameters or human review within 24 hours.
                               </Text>
                         </div>
@@ -1417,7 +1417,7 @@ const PageHeader: React.FC<{ job: Job; platformInfo: PlatformStyle }> = ({ job, 
                         <Text size={500} weight="semibold" style={{ color: tokens.colorNeutralForeground1, letterSpacing: '-0.01em' }} block>
                               {job.title}
                         </Text>
-                        <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
                               Escrow ID:{' '}
                               <span className={styles.escrowId}>{job.id}</span>
                         </Text>
@@ -1456,7 +1456,7 @@ const UploadingState: React.FC = () => {
                         <Spinner size="large" />
                         <div style={{ textAlign: 'center' }}>
                               <Text size={300} weight="semibold" block>Uploading Assets</Text>
-                              <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>Verifying file metadata structure…</Text>
+                              <Text size={300} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>Verifying file metadata structure…</Text>
                         </div>
                   </div>
             </div>

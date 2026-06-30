@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import AuthProvider from './contexts/authentication';
 import { Layout } from './components/Layout';
 import PostJob from './pages/PostJob';
-import Wallet from './pages/Wallet';
+import WalletProps from './pages/Wallet';
 import Marketplace from './pages/Marketplace';
 import Job from './pages/Marketplace/Job';
 import ProtectedRoutes from './contexts/protected_routes';
@@ -16,6 +16,9 @@ import JobVerification from './pages/Jobs/JobVerification'
 import JobDir from './pages/Jobs/JobDir';
 import Jobs from './pages/Jobs';
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
+import Test from './pages/Test';
+import Privacypolicy from './pages/StaticPages/Privacypolicy';
+import TermsOfService from './pages/StaticPages/Termofservice';
 
 const RenderLayout = ({ element }: { element: React.ReactNode }) => {
       return <Layout>{element}</Layout>
@@ -36,19 +39,19 @@ const App: React.FC = () => {
                         <Routes>
                               <Route path="/" element={<LandingPage />} />
                               <Route path="/auth/signup" element={
-                                    <ProtectedRoutes>
+                                    // <ProtectedRoutes>
                                           <Auth type="register" />
-                                    </ProtectedRoutes>
+                                    // {/* </ProtectedRoutes> */}
                               } />
                               <Route path="/auth/login" element={
-                                    <ProtectedRoutes>
+                                    // <ProtectedRoutes>
                                           <Auth type="login" />
-                                    </ProtectedRoutes>
+                                    // </ProtectedRoutes>
                               } />
                               <Route path="/auth/profile" element={
-                                    <ProtectedRoutes>
+                                    // <ProtectedRoutes>
                                           <Auth type="profile" />
-                                    </ProtectedRoutes>
+                                    // </ProtectedRoutes>
                               } />
                               
                               <Route path='/auth/workbit/email/verified' element={<Verified />} />
@@ -65,7 +68,7 @@ const App: React.FC = () => {
                               } />
                               <Route path="/wallet" element={
                                     <ProtectedRoutes>
-                                          <RenderLayout element={<Wallet />} />
+                                          <RenderLayout element={<WalletProps />} />
                                     </ProtectedRoutes>
                               } />
                               <Route path="/marketplace" element={
@@ -92,6 +95,17 @@ const App: React.FC = () => {
                                     <ProtectedRoutes>
                                           <RenderLayout element={<Jobs />} />
                                     </ProtectedRoutes>
+                              } />
+                              <Route path="/test" element={
+                                    <ProtectedRoutes>
+                                          <RenderLayout element={<Test />} />
+                                    </ProtectedRoutes>
+                              } />
+                              <Route path="/termsofservice" element={
+                                    <TermsOfService />
+                              } />
+                              <Route path="/privacy/policy" element={
+                                    <Privacypolicy />
                               } />
                         </Routes>
                   </FluentProvider>

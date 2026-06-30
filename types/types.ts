@@ -158,7 +158,6 @@ export interface JobProofItem {
 export interface Wallet {
       id: string;
       user_id: string;
-      balance: number;
       currency: string;
       is_frozen: boolean;
       created_at: string;

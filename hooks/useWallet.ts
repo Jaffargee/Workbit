@@ -3,12 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/server/supabase';
 import { useAuth } from '@/contexts/authentication';
-
-interface WalletData {
-      id: string;
-      currency: string;
-      is_frozen: boolean;
-}
+import { Wallet } from '@/types/types';
 
 interface WalletSummary {
       current_balance: number;
@@ -24,7 +19,7 @@ interface WalletSummary {
 }
 
 interface UseWalletReturn {
-      wallet: WalletData | null;
+      wallet: Wallet | null;
       summary: WalletSummary | null;
       loading: boolean;
       error: string | null;
@@ -34,7 +29,7 @@ interface UseWalletReturn {
 export function useWallet(): UseWalletReturn {
       const { profile } = useAuth();
 
-      const [wallet, setWallet] = useState<WalletData | null>(null);
+      const [wallet, setWallet] = useState<Wallet | null>(null);
       const [summary, setSummary] = useState<WalletSummary | null>(null);
       const [loading, setLoading] = useState(false);
       const [error, setError] = useState<string | null>(null);
@@ -49,7 +44,7 @@ export function useWallet(): UseWalletReturn {
                   // 1. fetch wallet row by user_profile_id
                   const { data: walletData, error: walletError } = await supabase
                         .from('wallets')
-                        .select('id, currency, is_frozen')
+                        .select('*')
                         .eq('user_id', profile.user_id)  // adjust FK name to match your schema
                         .single();
 

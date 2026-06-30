@@ -4,7 +4,7 @@ import { supabase } from '@/server/supabase';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import StatusDialog from '@/components/StatusDialog';
 import TransactionDetailsSheet from '@/components/Wallet/TransactionDetails';
-import { WalletDeposit } from '@/types/types';
+import { Wallet as WalletProps, WalletDeposit } from '@/types/types';
 
 import {
       makeStyles,
@@ -42,6 +42,8 @@ import {
       ArrowTrendingRegular,
       GiftRegular,
       ChevronRightRegular,
+      LockClosedRegular,
+      LockOpenRegular,
 } from '@fluentui/react-icons';
 import { Loader2 } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
@@ -485,9 +487,7 @@ const Wallet: React.FC = () => {
       const { profile } = useAuth();
 
       const [statusOpen, setStatusOpen] = useState(false);
-      const [statusType, setStatusType] = useState<'success' | 'error' | null>(
-            null
-      );
+      const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
       const [statusMessage, setStatusMessage] = useState('');
 
       const triggerStatus = (type: 'success' | 'error', message: string) => {
@@ -497,12 +497,12 @@ const Wallet: React.FC = () => {
       };
 
       const { wallet, summary, loading, refresh } = useWallet();
+      const balance = summary?.current_balance ?? 0;
 
-      
       return (
             <div className={styles.root}>
                   {/* Hero balance card */}
-                  <BalanceDashboard balanceLoading={loading} />
+                  <BalanceDashboard balanceLoading={loading} balance={balance} wallet={wallet} />
 
                   {/* Quick stats row */}
                   <div className={styles.statsRow}>
@@ -520,7 +520,7 @@ const Wallet: React.FC = () => {
                                     Total Earned
                               </Text>
                               <Text className={styles.statValue}>
-                                    ₦{summary?.current_balance.toLocaleString()}
+                                    {/* ₦{balance.toLocaleString()} */}
                               </Text>
                         </div>
                         <div className={styles.statCard}>
@@ -646,13 +646,11 @@ const Wallet: React.FC = () => {
 
 // ─── Balance Dashboard ─────────────────────────────────────────────────────
 
-const BalanceDashboard: React.FC<{ balanceLoading: boolean }> = ({ balanceLoading }) => {
+const BalanceDashboard: React.FC<{ balanceLoading: boolean, balance: number, wallet: WalletProps | null }> = ({ balanceLoading, balance, wallet }) => {
       const styles = useStyles();
       const { profile } = useAuth();
       const [hidden, setHidden] = useState(false);
       
-      const { summary } = useWallet();
-      const balance = summary?.current_balance ?? 0;
 
       return (
             <div className={styles.balanceCard}>
@@ -671,23 +669,48 @@ const BalanceDashboard: React.FC<{ balanceLoading: boolean }> = ({ balanceLoadin
                                           • REGULAR
                                     </span>
                               </div>
-                              <div className={styles.walletIconPill}>
-                                    <WalletCreditCardRegular
-                                          style={{
-                                                color: '#60a5fa',
-                                                fontSize: 18,
-                                          }}
-                                    />
-                                    <Text
-                                          style={{
-                                                color: 'rgba(255,255,255,0.6)',
-                                                fontSize: tokens.fontSizeBase100,
-                                                fontWeight:
-                                                      tokens.fontWeightSemibold,
-                                          }}
-                                    >
-                                          NGN
-                                    </Text>
+                              <div className="flex flex-row items-center justify-center gap-4">
+                                    <div className={styles.walletIconPill}>
+                                          <WalletCreditCardRegular
+                                                style={{
+                                                      color: '#60a5fa',
+                                                      fontSize: 18,
+                                                }}
+                                          />
+                                          <Text
+                                                style={{
+                                                      color: 'rgba(255,255,255,0.6)',
+                                                      fontSize: tokens.fontSizeBase100,
+                                                      fontWeight:
+                                                            tokens.fontWeightSemibold,
+                                                }}
+                                          >
+                                                NGN
+                                          </Text>
+                                    </div>
+                                    <div
+                                          className={styles.walletIconPill}
+                                          style={
+                                          wallet?.is_frozen
+                                                ? { backgroundColor: 'rgba(239,68,68,0.15)' }
+                                                : { backgroundColor: 'rgba(96,165,250,0.15)' }
+                                          }
+                                          >
+                                          {wallet?.is_frozen ? (
+                                                <LockClosedRegular style={{ color: '#f87171', fontSize: 18 }} />
+                                          ) : (
+                                                <LockOpenRegular style={{ color: '#60a5fa', fontSize: 18 }} />
+                                          )}
+                                          <Text
+                                                style={{
+                                                      color: wallet?.is_frozen ? '#f87171' : 'rgba(255,255,255,0.6)',
+                                                      fontSize: tokens.fontSizeBase100,
+                                                      fontWeight: tokens.fontWeightSemibold,
+                                                }}
+                                          >
+                                                {wallet?.is_frozen ? 'Frozen' : 'Active'}
+                                          </Text>
+                                    </div>
                               </div>
                         </div>
 
@@ -807,7 +830,7 @@ const SpendingOverview: React.FC<{ balance: number }> = ({ balance }) => {
                                                 {cat.label}
                                           </Text>
                                           <Text size={200} weight="bold">
-                                                ₦{cat.value.toLocaleString()}
+                                                {/* ₦{cat.value.toLocaleString()} */}
                                           </Text>
                                     </div>
                                     <ProgressBar
@@ -835,7 +858,7 @@ const SpendingOverview: React.FC<{ balance: number }> = ({ balance }) => {
 const EarningsBreakdown: React.FC = () => {
       const styles = useStyles();
       const { profile } = useAuth();
-      const balance = profile?.wallet?.balance ?? 0;
+      const balance = 0;
 
       return (
             <div className={styles.earningsCard}>
@@ -872,7 +895,7 @@ const EarningsBreakdown: React.FC = () => {
                                           whiteSpace: 'nowrap',
                                     }}
                               >
-                                    ₦{balance.toLocaleString()}
+                                    {/* ₦{balance.toLocaleString()} */}
                               </Text>
                         </div>
 
@@ -923,7 +946,7 @@ const EarningsBreakdown: React.FC = () => {
                                     Total Deposited
                               </Text>
                               <Text size={400} weight="bold">
-                                    ₦{balance.toLocaleString()}
+                                    {/* ₦{balance.toLocaleString()} */}
                               </Text>
                         </div>
                   </div>
@@ -1011,7 +1034,6 @@ const ActionButtonContainer: React.FC<{
                               const verified = await verifyPayment(
                                     response.transaction_id
                               );
-                              console.log(verified)
                               if (verified.success) {
                                     await refreshUserProfile();
                                     triggerStatus(
@@ -1375,7 +1397,7 @@ export const TrxTableRow: React.FC<{ tx: any }> = ({ tx }) => {
                         }}
                   >
                         {isCredit ? '+' : '-'}₦
-                        {Math.abs(tx.amount).toLocaleString()}
+                        {/* {Math.abs(tx.amount).toLocaleString()} */}
                   </Text>
             </div>
       );

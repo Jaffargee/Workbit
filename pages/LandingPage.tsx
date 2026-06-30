@@ -1,433 +1,1208 @@
-import React from 'react';
-import { Logo } from '../components/Logo';
-import {
-      ArrowRight,
-      CheckCircle,
-      Zap,
-      ShieldCheck,
-      Smartphone,
-      Users,
-      Target,
-      BarChart3,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+      makeStyles,
+      tokens,
+      Button,
+      Text,
+      Spinner,
+} from '@fluentui/react-components';
+import {
+      ShieldCheckmarkRegular,
+      FlashRegular,
+      WalletCreditCardRegular,
+      PersonAddRegular,
+      TargetRegular,
+      CheckmarkCircleRegular,
+      ArrowRightRegular,
+      PhoneRegular,
+      ChartMultipleRegular,
+      LockClosedRegular,
+      NavigationRegular,
+      DismissRegular,
+} from '@fluentui/react-icons';
+import { Logo } from '../components/Logo';
 import { useAuth } from '@/contexts/authentication';
+import { supabase } from '@/server/supabase';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface LandingStats {
+      total_paid_out: number;
+      active_jobs: number;
+      workers_paid: number;
+      jobs_completed: number;
+}
+
+// ─── Breakpoints ────────────────────────────────────────────────────────────
+// tablet: <= 960px, mobile: <= 600px
+
+const TABLET = '@media (max-width: 960px)';
+const MOBILE = '@media (max-width: 600px)';
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const useStyles = makeStyles({
+      page: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            minHeight: '100vh',
+            overflowX: 'hidden',
+      },
+
+      // Nav
+      nav: {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+      },
+      navInner: {
+            maxWidth: '1180px',
+            margin: '0 auto',
+            height: '72px',
+            padding: '0 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            [MOBILE]: {
+                  height: '60px',
+                  padding: '0 16px',
+            },
+      },
+      navLinks: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '32px',
+            [TABLET]: {
+                  display: 'none',
+            },
+      },
+      navLink: {
+            fontSize: tokens.fontSizeBase300,
+            fontWeight: tokens.fontWeightMedium,
+            color: tokens.colorNeutralForeground2,
+            textDecoration: 'none',
+            ':hover': { color: tokens.colorBrandForeground1 },
+      },
+      navActions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            [MOBILE]: {
+                  gap: '8px',
+            },
+      },
+      navActionsDesktop: {
+            [TABLET]: {
+                  display: 'none',
+            },
+      },
+      menuButton: {
+            display: 'none',
+            [TABLET]: {
+                  display: 'inline-flex',
+            },
+      },
+      mobileMenu: {
+            display: 'none',
+            [TABLET]: {
+                  display: 'flex',
+            },
+            position: 'fixed',
+            top: '60px',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 49,
+            backgroundColor: tokens.colorNeutralBackground1,
+            flexDirection: 'column',
+            padding: '24px',
+            gap: '8px',
+      },
+      mobileNavLink: {
+            fontSize: tokens.fontSizeBase500,
+            fontWeight: tokens.fontWeightMedium,
+            color: tokens.colorNeutralForeground1,
+            textDecoration: 'none',
+            padding: '14px 4px',
+            borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+      },
+      mobileMenuActions: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            marginTop: '16px',
+      },
+
+      // Hero
+      hero: {
+            paddingTop: '160px',
+            paddingBottom: '80px',
+            paddingLeft: '24px',
+            paddingRight: '24px',
+            [TABLET]: {
+                  paddingTop: '120px',
+                  paddingBottom: '56px',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+            },
+            [MOBILE]: {
+                  paddingTop: '92px',
+                  paddingBottom: '40px',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+            },
+      },
+      heroInner: {
+            maxWidth: '760px',
+            margin: '0 auto',
+            textAlign: 'center',
+      },
+      eyebrow: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: tokens.borderRadiusCircular,
+            backgroundColor: tokens.colorBrandBackground2,
+            color: tokens.colorBrandForeground2,
+            fontSize: tokens.fontSizeBase200,
+            fontWeight: tokens.fontWeightSemibold,
+            marginBottom: '28px',
+            textAlign: 'left',
+            [MOBILE]: {
+                  marginBottom: '20px',
+            },
+      },
+      h1: {
+            fontSize: 'clamp(32px, 7vw, 56px)',
+            lineHeight: '1.1',
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            letterSpacing: '-0.02em',
+            margin: '0 0 20px',
+            [MOBILE]: {
+                  margin: '0 0 14px',
+            },
+      },
+      h1Accent: {
+            color: tokens.colorBrandForeground1,
+      },
+      subhead: {
+            fontSize: 'clamp(15px, 2.4vw, 18px)',
+            lineHeight: '1.6',
+            color: tokens.colorNeutralForeground3,
+            margin: '0 0 36px',
+            maxWidth: '560px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            [MOBILE]: {
+                  margin: '0 0 24px',
+            },
+      },
+      heroActions: {
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '12px',
+            flexWrap: 'wrap',
+            [MOBILE]: {
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+            },
+      },
+
+      // Live stat banner
+      liveStatCard: {
+            maxWidth: '1180px',
+            margin: '0 auto 96px',
+            padding: '0 24px',
+            [TABLET]: {
+                  margin: '0 auto 64px',
+                  padding: '0 20px',
+            },
+            [MOBILE]: {
+                  margin: '0 auto 40px',
+                  padding: '0 16px',
+            },
+      },
+      liveStatInner: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke2}`,
+            borderRadius: '20px',
+            padding: '40px 48px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '0',
+            [TABLET]: {
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  rowGap: '28px',
+                  padding: '32px 24px',
+            },
+            [MOBILE]: {
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  rowGap: '24px',
+                  padding: '24px 16px',
+                  borderRadius: '16px',
+            },
+      },
+      statCell: {
+            textAlign: 'center',
+            padding: '0 16px',
+            borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
+            [TABLET]: {
+                  borderRight: 'none',
+                  borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+                  paddingBottom: '24px',
+            },
+            [MOBILE]: {
+                  padding: '0 8px',
+                  paddingBottom: '20px',
+            },
+      },
+      statCellLast: {
+            textAlign: 'center',
+            padding: '0 16px',
+            [MOBILE]: {
+                  padding: '0 8px',
+            },
+      },
+      statValue: {
+            fontSize: 'clamp(22px, 4vw, 32px)',
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            letterSpacing: '-0.01em',
+            display: 'block',
+      },
+      statValueAccent: {
+            color: tokens.colorBrandForeground1,
+      },
+      statLabel: {
+            fontSize: tokens.fontSizeBase200,
+            color: tokens.colorNeutralForeground3,
+            fontWeight: tokens.fontWeightMedium,
+            marginTop: '6px',
+            display: 'block',
+      },
+
+      // Generic section
+      section: {
+            padding: '88px 24px',
+            [TABLET]: {
+                  padding: '64px 20px',
+            },
+            [MOBILE]: {
+                  padding: '48px 16px',
+            },
+      },
+      sectionAlt: {
+            backgroundColor: tokens.colorNeutralBackground2,
+      },
+      sectionInner: {
+            maxWidth: '1180px',
+            margin: '0 auto',
+      },
+      sectionHead: {
+            textAlign: 'center',
+            maxWidth: '560px',
+            margin: '0 auto 64px',
+            [MOBILE]: {
+                  margin: '0 auto 36px',
+            },
+      },
+      h2: {
+            fontSize: 'clamp(26px, 4.5vw, 36px)',
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            letterSpacing: '-0.01em',
+            margin: '0 0 12px',
+      },
+      sectionSub: {
+            fontSize: tokens.fontSizeBase400,
+            color: tokens.colorNeutralForeground3,
+            lineHeight: '1.6',
+            margin: 0,
+      },
+
+      // How it works
+      stepsGrid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '24px',
+            [TABLET]: {
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+            },
+            [MOBILE]: {
+                  gridTemplateColumns: '1fr',
+                  gap: '16px',
+            },
+      },
+      stepCard: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke2}`,
+            borderRadius: '16px',
+            padding: '32px',
+            [MOBILE]: {
+                  padding: '24px',
+            },
+      },
+      stepIconBox: {
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: tokens.colorBrandBackground2,
+            color: tokens.colorBrandForeground2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '20px',
+      },
+      stepTitle: {
+            fontSize: tokens.fontSizeBase500,
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            margin: '0 0 8px',
+      },
+      stepDesc: {
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground3,
+            lineHeight: '1.6',
+            margin: 0,
+      },
+
+      // Trust / escrow explainer
+      trustGrid: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '56px',
+            alignItems: 'center',
+            [TABLET]: {
+                  gridTemplateColumns: '1fr',
+                  gap: '40px',
+            },
+      },
+      trustList: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '24px',
+      },
+      trustItem: {
+            display: 'flex',
+            gap: '16px',
+            alignItems: 'flex-start',
+      },
+      trustIconBox: {
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            backgroundColor: tokens.colorPaletteGreenBackground1,
+            color: tokens.colorPaletteGreenForeground1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+      },
+      trustItemTitle: {
+            fontSize: tokens.fontSizeBase400,
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            margin: '0 0 4px',
+      },
+      trustItemDesc: {
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground3,
+            lineHeight: '1.6',
+            margin: 0,
+      },
+      trustVisual: {
+            backgroundColor: tokens.colorNeutralBackground1,
+            border: `1px solid ${tokens.colorNeutralStroke2}`,
+            borderRadius: '20px',
+            padding: '32px',
+            [MOBILE]: {
+                  padding: '20px',
+            },
+      },
+      flowRow: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '16px 0',
+            flexWrap: 'wrap',
+      },
+      flowDivider: {
+            borderTop: `1px dashed ${tokens.colorNeutralStroke2}`,
+      },
+      flowDot: {
+            width: '10px',
+            height: '10px',
+            borderRadius: tokens.borderRadiusCircular,
+            backgroundColor: tokens.colorBrandBackground,
+            flexShrink: 0,
+      },
+      flowLabel: {
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground1,
+            fontWeight: tokens.fontWeightMedium,
+      },
+      flowAmount: {
+            marginLeft: 'auto',
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground3,
+            fontFamily: tokens.fontFamilyMonospace,
+      },
+
+      // CTA band
+      ctaSection: {
+            padding: '96px 24px',
+            backgroundColor: tokens.colorNeutralForeground1,
+            [TABLET]: {
+                  padding: '64px 20px',
+            },
+            [MOBILE]: {
+                  padding: '48px 16px',
+            },
+      },
+      ctaInner: {
+            maxWidth: '640px',
+            margin: '0 auto',
+            textAlign: 'center',
+      },
+      ctaH2: {
+            fontSize: 'clamp(26px, 4.5vw, 36px)',
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralBackground1,
+            letterSpacing: '-0.01em',
+            margin: '0 0 16px',
+      },
+      ctaSub: {
+            fontSize: tokens.fontSizeBase400,
+            color: 'rgba(255,255,255,0.65)',
+            margin: '0 0 32px',
+            lineHeight: '1.6',
+      },
+
+      // Footer
+      footer: {
+            padding: '64px 24px 32px',
+            borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+            [MOBILE]: {
+                  padding: '40px 16px 24px',
+            },
+      },
+      footerInner: {
+            maxWidth: '1180px',
+            margin: '0 auto',
+      },
+      footerGrid: {
+            display: 'grid',
+            gridTemplateColumns: '2fr 1fr 1fr',
+            gap: '48px',
+            marginBottom: '48px',
+            [TABLET]: {
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '32px',
+            },
+            [MOBILE]: {
+                  gridTemplateColumns: '1fr',
+                  gap: '28px',
+                  marginBottom: '32px',
+            },
+      },
+      footerDesc: {
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground3,
+            lineHeight: '1.6',
+            margin: '16px 0 0',
+            maxWidth: '320px',
+      },
+      footerColTitle: {
+            fontSize: tokens.fontSizeBase200,
+            fontWeight: tokens.fontWeightSemibold,
+            color: tokens.colorNeutralForeground1,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            margin: '0 0 16px',
+      },
+      footerLink: {
+            display: 'block',
+            fontSize: tokens.fontSizeBase300,
+            color: tokens.colorNeutralForeground3,
+            textDecoration: 'none',
+            marginBottom: '12px',
+            ':hover': { color: tokens.colorBrandForeground1 },
+      },
+      footerBottom: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: '32px',
+            borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+            fontSize: tokens.fontSizeBase200,
+            color: tokens.colorNeutralForeground3,
+            [MOBILE]: {
+                  flexDirection: 'column',
+                  gap: '16px',
+                  textAlign: 'center',
+            },
+      },
+});
+
+// ─── Data hook ──────────────────────────────────────────────────────────────
+
+function useLandingStats() {
+      const [stats, setStats] = useState<LandingStats | null>(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+            let cancelled = false;
+            (async () => {
+                  try {
+                        const { data, error } =
+                              await supabase.rpc('get_landing_stats');
+                        if (cancelled) return;
+                        if (error) {
+                              console.error('[useLandingStats]', error);
+                              setStats(null);
+                        } else {
+                              setStats(data as LandingStats);
+                        }
+                  } finally {
+                        if (!cancelled) setLoading(false);
+                  }
+            })();
+            return () => {
+                  cancelled = true;
+            };
+      }, []);
+
+      return { stats, loading };
+}
+
+function formatNaira(amount: number): string {
+      if (amount >= 1_000_000) return `₦${(amount / 1_000_000).toFixed(1)}M+`;
+      if (amount >= 1_000) return `₦${(amount / 1_000).toFixed(0)}k+`;
+      return `₦${amount.toLocaleString()}`;
+}
+
+function formatCount(n: number): string {
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k+`;
+      return `${n}`;
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
 
 const LandingPage: React.FC = () => {
-      const stats = [
-            { label: 'Active Jobs', value: '2.5k+' },
-            { label: 'Total Workers', value: '150k+' },
-            { label: 'Total Payouts', value: '₦45M+' },
-            { label: 'Trust Score', value: '99.9%' },
-      ];
-
-      const { isAuthenticated } = { isAuthenticated: false }; // Replace with actual auth logic
+      const styles = useStyles();
+      const { stats, loading } = useLandingStats();
 
       return (
-            <div className="bg-white min-h-screen">
-                  {/* Navbar */}
-                  <nav className="fixed top-0 inset-x-0 bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
-                        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                              <Logo />
-                              <div className="hidden md:flex items-center gap-8 text-slate-600 font-medium">
-                                    <div className="block relative w-full h-full">
-                                          <ul className="flex gap-6 h-full">
-                                                <li className="inline-block mx-2 h-full">
-                                                      <a
-                                                            href="#how-it-works"
-                                                            className="hover:text-blue-600 transition-colors"
-                                                      >
-                                                            <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>
-                                                                        How it
-                                                                        Works
-                                                                  </span>
-                                                            </div>
-                                                      </a>
-                                                </li>
-                                                <li className="inline-block mx-2 h-full">
-                                                      <a
-                                                            href="#pricing"
-                                                            className="hover:text-blue-600 transition-colors"
-                                                      >
-                                                            <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>
-                                                                        Pricing
-                                                                  </span>
-                                                            </div>
-                                                      </a>
-                                                </li>
-                                                <li className="inline-block mx-2 h-full">
-                                                      <a
-                                                            href="#features"
-                                                            className="hover:text-blue-600 transition-colors"
-                                                      >
-                                                            <div className="flex flex-col items-center justify-center relative h-full">
-                                                                  <span>
-                                                                        Features
-                                                                  </span>
-                                                            </div>
-                                                      </a>
-                                                </li>
-                                          </ul>
-                                    </div>
-                              </div>
-                              <AuthTypeLoggedInORNot />
-                        </div>
-                  </nav>
-
-                  {/* Hero */}
-                  <section className="pt-40 pb-20 px-6">
-                        <div className="max-w-7xl mx-auto grid lg:grid-cols- gap-12">
-                              <div className="space-y-8 text-center justify-center w-full">
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm">
-                                          <Zap size={16} />
-                                          <span>
-                                                Join the 1st Micro-Job
-                                                Communityin Nigeria
-                                          </span>
-                                    </div>
-                                    <h1 className="text-5xl lg:text-7xl font-bold text-slate-900 leading-[1.1]">
-                                          Earn Daily with <br />
-                                          <span className="text-blue-600">
-                                                Simple Social Media
-                                          </span>{' '}
-                                          Tasks
-                                    </h1>
-                                    <p className="text-lg text-slate-600 leading-relaxed max-w-lg mx-auto">
-                                          Follow, Like, Subscribe, and Share. We
-                                          bridge the gap between business owners
-                                          and workers. Build your wallet by
-                                          helping brands grow.
-                                    </p>
-                                    <div className="flex flex-col sm:flex-row w-full justify-center gap-4 pt-4">
-                                          <Link
-                                                to={
-                                                      isAuthenticated
-                                                            ? '/dashboard'
-                                                            : '/auth/signup'
-                                                }
-                                                className="bg-blue-600 border border-slate-600 shadow-lg shadow-blue-200 border-1 text-white px-8 py-3 rounded-full font-semibold text-md hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-                                          >
-                                                Start Earning Now{' '}
-                                                <ArrowRight size={20} />
-                                          </Link>
-                                          <Link
-                                                to="/marketplace"
-                                                className="border-2 border-slate-200 text-slate-800 px-8 py-3 rounded-full font-semibold text-md hover:bg-slate-50 transition-all flex items-center justify-center"
-                                          >
-                                                Browse Jobs
-                                          </Link>
-                                    </div>
-                              </div>
-                              {/* <div className="relative">
-                                    <div className="absolute -inset-4 bg-blue-100 rounded-3xl rotate-3"></div>
-                                    <img
-                                          src="https://picsum.photos/800/600?random=1"
-                                          alt="Dashboard Preview"
-                                          className="relative rounded-3xl shadow-2xl border border-white"
-                                    />
-                              </div> */}
-                        </div>
-                  </section>
-
-                  {/* Stats */}
-                  <section
-                        id="features"
-                        className="py-20 bg-slate-50 border-y border-slate-100"
-                  >
-                        <div className="max-w-7xl mx-auto px-6">
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                                    {stats.map((s, idx) => (
-                                          <div
-                                                key={idx}
-                                                className="text-center space-y-2"
-                                          >
-                                                <p className="text-4xl font-extrabold text-blue-600">
-                                                      {s.value}
-                                                </p>
-                                                <p className="text-slate-500 font-medium uppercase tracking-wider text-sm">
-                                                      {s.label}
-                                                </p>
-                                          </div>
-                                    ))}
-                              </div>
-                        </div>
-                  </section>
-
-                  {/* How it Works */}
-                  <section id="how-it-works" className="py-24 px-6">
-                        <div className="max-w-7xl mx-auto space-y-16">
-                              <div className="text-center space-y-4 max-w-2xl mx-auto">
-                                    <h2 className="text-4xl font-bold text-slate-900">
-                                          How Workbit Works
-                                    </h2>
-                                    <p className="text-slate-600">
-                                          Three simple steps to start earning or
-                                          growing your business presence.
-                                    </p>
-                              </div>
-                              <div className="grid md:grid-cols-3 gap-12">
-                                    {[
-                                          {
-                                                title: 'Create Account',
-                                                desc: 'Sign up for free and activate your dashboard in seconds.',
-                                                icon: (
-                                                      <Users
-                                                            className="text-blue-600"
-                                                            size={32}
-                                                      />
-                                                ),
-                                          },
-                                          {
-                                                title: 'Browse & Perform',
-                                                desc: 'Choose from hundreds of social media tasks that match your profile.',
-                                                icon: (
-                                                      <Target
-                                                            className="text-blue-600"
-                                                            size={32}
-                                                      />
-                                                ),
-                                          },
-                                          {
-                                                title: 'Get Paid',
-                                                desc: 'Once your proof is approved, your wallet is credited instantly.',
-                                                icon: (
-                                                      <CheckCircle
-                                                            className="text-blue-600"
-                                                            size={32}
-                                                      />
-                                                ),
-                                          },
-                                    ].map((step, idx) => (
-                                          <div
-                                                key={idx}
-                                                className="bg-slate-50 p-10 rounded-3xl space-y-6 relative overflow-hidden group"
-                                          >
-                                                <div className="absolute top-0 right-0 p-8 text-8xl font-black text-slate-100 group-hover:text-blue-50 transition-colors">
-                                                      0{idx + 1}
-                                                </div>
-                                                <div className="relative p-4 bg-white rounded-2xl w-fit shadow-sm">
-                                                      {step.icon}
-                                                </div>
-                                                <div className="relative space-y-3">
-                                                      <h3 className="text-2xl font-bold text-slate-900">
-                                                            {step.title}
-                                                      </h3>
-                                                      <p className="text-slate-600 leading-relaxed">
-                                                            {step.desc}
-                                                      </p>
-                                                </div>
-                                          </div>
-                                    ))}
-                              </div>
-                        </div>
-                  </section>
-
-                  {/* Pricing */}
-                  <section
-                        id="pricing"
-                        className="py-24 px-6 bg-slate-900 text-white"
-                  >
-                        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-                              <div className="space-y-8">
-                                    <h2 className="text-4xl font-bold">
-                                          Unbeatable Value for Earners
-                                    </h2>
-                                    <p className="text-slate-400 text-lg leading-relaxed">
-                                          To ensure our platform remains secure
-                                          and only includes serious workers, we
-                                          require a small annual subscription
-                                          fee. This helps us maintain high job
-                                          quality and faster payouts.
-                                    </p>
-                                    <div className="space-y-4">
-                                          {[
-                                                'Unlimited Job Access',
-                                                'Priority Payouts',
-                                                'Referral Bonuses (₦500)',
-                                                '24/7 Support',
-                                          ].map((feat, i) => (
-                                                <div
-                                                      key={i}
-                                                      className="flex items-center gap-3"
-                                                >
-                                                      <CheckCircle
-                                                            className="text-blue-500"
-                                                            size={20}
-                                                      />
-                                                      <span>{feat}</span>
-                                                </div>
-                                          ))}
-                                    </div>
-                              </div>
-                              <div className="bg-white text-slate-900 p-12 rounded-3xl shadow-2xl space-y-8 border-4 border-blue-600 relative">
-                                    <div className="absolute top-0 right-12 transform -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold">
-                                          ANNUAL PLAN
-                                    </div>
-                                    <div className="space-y-2">
-                                          <h3 className="text-2xl font-bold">
-                                                Subscription
-                                          </h3>
-                                          <div className="flex items-baseline gap-1">
-                                                <span className="text-5xl font-black">
-                                                      ₦5,000
-                                                </span>
-                                                <span className="text-slate-500 font-semibold">
-                                                      /year
-                                                </span>
-                                          </div>
-                                    </div>
-                                    <p className="text-slate-500">
-                                          Everything you need to maximize your
-                                          side income.
-                                    </p>
-                                    <Link
-                                          to="/auth/signup"
-                                          className="block text-center bg-blue-600 text-white py-3 rounded-full font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
-                                    >
-                                          Get Started Now
-                                    </Link>
-                              </div>
-                        </div>
-                  </section>
-
-                  {/* Footer */}
-                  <footer className="py-20 border-t border-slate-100">
-                        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
-                              <div className="space-y-6">
-                                    <Logo />
-                                    <p className="text-slate-500">
-                                          Leading the digital gig economy in
-                                          Nigeria. Fast, Reliable, Secure.
-                                    </p>
-                              </div>
-                              <div>
-                                    <h4 className="font-bold mb-6">Platform</h4>
-                                    <ul className="space-y-4 text-slate-600">
-                                          <li>
-                                                <a
-                                                      href="#/marketplace"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Marketplace
-                                                </a>
-                                          </li>
-                                          <li>
-                                                <a
-                                                      href="#/post-job"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Post a Job
-                                                </a>
-                                          </li>
-                                          <li>
-                                                <a
-                                                      href="#pricing"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Pricing
-                                                </a>
-                                          </li>
-                                    </ul>
-                              </div>
-                              <div>
-                                    <h4 className="font-bold mb-6">Support</h4>
-                                    <ul className="space-y-4 text-slate-600">
-                                          <li>
-                                                <a
-                                                      href="#"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Help Center
-                                                </a>
-                                          </li>
-                                          <li>
-                                                <a
-                                                      href="#"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Contact Us
-                                                </a>
-                                          </li>
-                                          <li>
-                                                <a
-                                                      href="#"
-                                                      className="hover:text-blue-600 transition-colors"
-                                                >
-                                                      Terms of Service
-                                                </a>
-                                          </li>
-                                    </ul>
-                              </div>
-                              <div>
-                                    <h4 className="font-bold mb-6">
-                                          Stay Updated
-                                    </h4>
-                                    <div className="flex gap-2">
-                                          <input
-                                                type="email"
-                                                placeholder="Email address"
-                                                className="bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg flex-1 focus:outline-none focus:border-blue-500"
-                                          />
-                                          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
-                                                Join
-                                          </button>
-                                    </div>
-                              </div>
-                        </div>
-                        <div className="max-w-7xl mx-auto px-6 pt-12 mt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                              <p className="text-slate-400 text-sm">
-                                    © 2024 Workbit Technologies. All rights
-                                    reserved.
-                              </p>
-                              <div className="flex gap-6 text-slate-400">
-                                    <Smartphone
-                                          size={20}
-                                          className="hover:text-blue-600 cursor-pointer"
-                                    />
-                                    <ShieldCheck
-                                          size={20}
-                                          className="hover:text-blue-600 cursor-pointer"
-                                    />
-                                    <BarChart3
-                                          size={20}
-                                          className="hover:text-blue-600 cursor-pointer"
-                                    />
-                              </div>
-                        </div>
-                  </footer>
+            <div className={styles.page}>
+                  <Nav />
+                  <Hero />
+                  <LiveStats stats={stats} loading={loading} />
+                  <HowItWorks />
+                  <TrustSection />
+                  <CtaBand />
+                  <Footer />
             </div>
       );
 };
 
-const AuthTypeLoggedInORNot: React.FC = () => {
-      const { isAuthenticated } = useAuth(); // Replace with actual auth logic
+// ─── Nav ────────────────────────────────────────────────────────────────────
 
-      return isAuthenticated ? (
-            <div className="flex items-center gap-4">
-                  <Link
-                        to="/dashboard"
-                        className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                  >
-                        Go to Dashboard
-                  </Link>
+const Nav: React.FC = () => {
+      const styles = useStyles();
+      const { isAuthenticated } = useAuth();
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      // Lock body scroll while the mobile menu is open
+      useEffect(() => {
+            document.body.style.overflow = menuOpen ? 'hidden' : '';
+            return () => {
+                  document.body.style.overflow = '';
+            };
+      }, [menuOpen]);
+
+      const closeMenu = () => setMenuOpen(false);
+
+      return (
+            <nav className={styles.nav}>
+                  <div className={styles.navInner}>
+                        <Logo />
+                        <div className={styles.navLinks}>
+                              <a
+                                    href="#how-it-works"
+                                    className={styles.navLink}
+                              >
+                                    How it works
+                              </a>
+                              <a href="#trust" className={styles.navLink}>
+                                    Escrow and trust
+                              </a>
+                              <Link
+                                    to="/marketplace"
+                                    className={styles.navLink}
+                              >
+                                    Browse jobs
+                              </Link>
+                        </div>
+                        <div className={styles.navActions}>
+                              <div className={styles.navActionsDesktop}>
+                                    {isAuthenticated ? (
+                                          <Button
+                                                as={Link as never}
+                                                href="/dashboard"
+                                                appearance="primary"
+                                          >
+                                                Go to dashboard
+                                          </Button>
+                                    ) : (
+                                          <div
+                                                style={{
+                                                      display: 'flex',
+                                                      gap: '16px',
+                                                }}
+                                          >
+                                                <Button
+                                                      as={Link as never}
+                                                      href="/auth/login"
+                                                      appearance="subtle"
+                                                >
+                                                      Log in
+                                                </Button>
+                                                <Button
+                                                      as={Link as never}
+                                                      href="/auth/signup"
+                                                      appearance="primary"
+                                                >
+                                                      Get started
+                                                </Button>
+                                          </div>
+                                    )}
+                              </div>
+                              <Button
+                                    className={styles.menuButton}
+                                    appearance="subtle"
+                                    icon={
+                                          menuOpen ? (
+                                                <DismissRegular />
+                                          ) : (
+                                                <NavigationRegular />
+                                          )
+                                    }
+                                    onClick={() => setMenuOpen((v) => !v)}
+                                    aria-label={
+                                          menuOpen ? 'Close menu' : 'Open menu'
+                                    }
+                              />
+                        </div>
+                  </div>
+
+                  {menuOpen && (
+                        <div className={styles.mobileMenu}>
+                              <a
+                                    href="#how-it-works"
+                                    className={styles.mobileNavLink}
+                                    onClick={closeMenu}
+                              >
+                                    How it works
+                              </a>
+                              <a
+                                    href="#trust"
+                                    className={styles.mobileNavLink}
+                                    onClick={closeMenu}
+                              >
+                                    Escrow and trust
+                              </a>
+                              <Link
+                                    to="/marketplace"
+                                    className={styles.mobileNavLink}
+                                    onClick={closeMenu}
+                              >
+                                    Browse jobs
+                              </Link>
+
+                              <div className={styles.mobileMenuActions}>
+                                    {isAuthenticated ? (
+                                          <Button
+                                                as={Link as never}
+                                                href="/dashboard"
+                                                appearance="primary"
+                                                size="large"
+                                                onClick={closeMenu}
+                                          >
+                                                Go to dashboard
+                                          </Button>
+                                    ) : (
+                                          <>
+                                                <Button
+                                                      as={Link as never}
+                                                      href="/auth/signup"
+                                                      appearance="primary"
+                                                      size="large"
+                                                      onClick={closeMenu}
+                                                >
+                                                      Get started
+                                                </Button>
+                                                <Button
+                                                      as={Link as never}
+                                                      href="/auth/login"
+                                                      appearance="outline"
+                                                      size="large"
+                                                      onClick={closeMenu}
+                                                >
+                                                      Log in
+                                                </Button>
+                                          </>
+                                    )}
+                              </div>
+                        </div>
+                  )}
+            </nav>
+      );
+};
+
+// ─── Hero ───────────────────────────────────────────────────────────────────
+
+const Hero: React.FC = () => {
+      const styles = useStyles();
+      const { isAuthenticated } = useAuth();
+
+      return (
+            <section className={styles.hero}>
+                  <div className={styles.heroInner}>
+                        <div className={styles.eyebrow}>
+                              <ShieldCheckmarkRegular fontSize={16} />
+                              <span>
+                                    Payments held in escrow until work is
+                                    approved
+                              </span>
+                        </div>
+                        <h1 className={styles.h1}>
+                              Get paid for tasks,
+                              <br />
+                              <span className={styles.h1Accent}>
+                                    not promises
+                              </span>
+                        </h1>
+                        <Text className={styles.subhead}>
+                              Workbit holds every job&apos;s budget in escrow
+                              before work starts. Finish the task, get approved,
+                              and your wallet is credited — no chasing, no
+                              excuses.
+                        </Text>
+                        <div className={styles.heroActions}>
+                              <Button
+                                    as={Link as never}
+                                    href={
+                                          isAuthenticated
+                                                ? '/dashboard'
+                                                : '/auth/signup'
+                                    }
+                                    appearance="primary"
+                                    size="large"
+                                    icon={<ArrowRightRegular />}
+                                    iconPosition="after"
+                              >
+                                    Start earning
+                              </Button>
+                              <Button
+                                    as={Link as never}
+                                    href="/marketplace"
+                                    appearance="outline"
+                                    size="large"
+                              >
+                                    Browse open jobs
+                              </Button>
+                        </div>
+                  </div>
+            </section>
+      );
+};
+
+// ─── Live stats ─────────────────────────────────────────────────────────────
+
+const LiveStats: React.FC<{ stats: LandingStats | null; loading: boolean }> = ({
+      stats,
+      loading,
+}) => {
+      const styles = useStyles();
+
+      const cells = [
+            {
+                  label: 'Paid out to workers',
+                  value: stats ? formatNaira(stats.total_paid_out) : '—',
+                  accent: true,
+            },
+            {
+                  label: 'Jobs open right now',
+                  value: stats ? formatCount(stats.active_jobs) : '—',
+            },
+            {
+                  label: 'Workers paid',
+                  value: stats ? formatCount(stats.workers_paid) : '—',
+            },
+            {
+                  label: 'Jobs completed',
+                  value: stats ? formatCount(stats.jobs_completed) : '—',
+            },
+      ];
+
+      return (
+            <div className={styles.liveStatCard}>
+                  <div className={styles.liveStatInner}>
+                        {loading ? (
+                              <div
+                                    style={{
+                                          gridColumn: '1 / -1',
+                                          display: 'flex',
+                                          justifyContent: 'center',
+                                          padding: '20px 0',
+                                    }}
+                              >
+                                    <Spinner
+                                          size="small"
+                                          label="Loading live numbers"
+                                          labelPosition="after"
+                                    />
+                              </div>
+                        ) : (
+                              cells.map((c, i) => (
+                                    <div
+                                          key={c.label}
+                                          className={
+                                                i === cells.length - 1
+                                                      ? styles.statCellLast
+                                                      : styles.statCell
+                                          }
+                                    >
+                                          <span
+                                                className={
+                                                      i === 0
+                                                            ? `${styles.statValue} ${styles.statValueAccent}`
+                                                            : styles.statValue
+                                                }
+                                          >
+                                                {c.value}
+                                          </span>
+                                          <span className={styles.statLabel}>
+                                                {c.label}
+                                          </span>
+                                    </div>
+                              ))
+                        )}
+                  </div>
             </div>
-      ) : (
-            <div className="flex items-center gap-4">
-                  <Link
-                        to="/auth/login"
-                        className="text-slate-600 font-semibold px-4 py-2 hover:text-blue-600 transition-colors"
-                  >
-                        Login
-                  </Link>
-                  <Link
-                        to="/auth/signup"
-                        className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                  >
-                        Get Started
-                  </Link>
-            </div>
+      );
+};
+
+// ─── How it works ───────────────────────────────────────────────────────────
+
+const HowItWorks: React.FC = () => {
+      const styles = useStyles();
+
+      const steps = [
+            {
+                  icon: <PersonAddRegular fontSize={22} />,
+                  title: 'Create your account',
+                  desc: 'Sign up free and verify your details. Your escrow wallet activates instantly.',
+            },
+            {
+                  icon: <TargetRegular fontSize={22} />,
+                  title: 'Pick a funded job',
+                  desc: 'Every job you see is already paid for and sitting in escrow before you start.',
+            },
+            {
+                  icon: <CheckmarkCircleRegular fontSize={22} />,
+                  title: 'Get paid on approval',
+                  desc: 'Submit proof of work. Once approved, your wallet is credited the same day.',
+            },
+      ];
+
+      return (
+            <section id="how-it-works" className={styles.section}>
+                  <div className={styles.sectionInner}>
+                        <div className={styles.sectionHead}>
+                              <h2 className={styles.h2}>
+                                    Three steps to your first payout
+                              </h2>
+                              <p className={styles.sectionSub}>
+                                    No invoices, no waiting on a client to
+                                    remember to pay you.
+                              </p>
+                        </div>
+                        <div className={styles.stepsGrid}>
+                              {steps.map((s) => (
+                                    <div
+                                          key={s.title}
+                                          className={styles.stepCard}
+                                    >
+                                          <div className={styles.stepIconBox}>
+                                                {s.icon}
+                                          </div>
+                                          <h3 className={styles.stepTitle}>
+                                                {s.title}
+                                          </h3>
+                                          <p className={styles.stepDesc}>
+                                                {s.desc}
+                                          </p>
+                                    </div>
+                              ))}
+                        </div>
+                  </div>
+            </section>
+      );
+};
+
+// ─── Trust / escrow explainer ───────────────────────────────────────────────
+
+const TrustSection: React.FC = () => {
+      const styles = useStyles();
+
+      const points = [
+            {
+                  icon: <LockClosedRegular fontSize={18} />,
+                  title: 'Funds locked before you start',
+                  desc: 'A job owner can\u2019t post work without funding it first. The money is reserved the moment the job goes live.',
+            },
+            {
+                  icon: <WalletCreditCardRegular fontSize={18} />,
+                  title: 'Instant wallet credit',
+                  desc: 'Once a job owner approves your work, the release is a single transaction \u2014 no multi-day bank transfer delays.',
+            },
+            {
+                  icon: <ChartMultipleRegular fontSize={18} />,
+                  title: 'Every transaction is logged',
+                  desc: 'Deposits, reservations, and releases are recorded in full, so you can see exactly where every naira moved.',
+            },
+      ];
+
+      return (
+            <section
+                  id="trust"
+                  className={`${styles.section} ${styles.sectionAlt}`}
+            >
+                  <div className={styles.sectionInner}>
+                        <div className={styles.trustGrid}>
+                              <div>
+                                    <h2
+                                          className={styles.h2}
+                                          style={{ textAlign: 'left' }}
+                                    >
+                                          Your pay sits in escrow, not in
+                                          someone&apos;s promise
+                                    </h2>
+                                    <p
+                                          className={styles.sectionSub}
+                                          style={{
+                                                textAlign: 'left',
+                                                marginBottom: '32px',
+                                          }}
+                                    >
+                                          Workbit&apos;s escrow model means the
+                                          money exists before the job is posted.
+                                          Here&apos;s what that looks like end
+                                          to end.
+                                    </p>
+                                    <div className={styles.trustList}>
+                                          {points.map((p) => (
+                                                <div
+                                                      key={p.title}
+                                                      className={
+                                                            styles.trustItem
+                                                      }
+                                                >
+                                                      <div
+                                                            className={
+                                                                  styles.trustIconBox
+                                                            }
+                                                      >
+                                                            {p.icon}
+                                                      </div>
+                                                      <div>
+                                                            <h3
+                                                                  className={
+                                                                        styles.trustItemTitle
+                                                                  }
+                                                            >
+                                                                  {p.title}
+                                                            </h3>
+                                                            <p
+                                                                  className={
+                                                                        styles.trustItemDesc
+                                                                  }
+                                                            >
+                                                                  {p.desc}
+                                                            </p>
+                                                      </div>
+                                                </div>
+                                          ))}
+                                    </div>
+                              </div>
+
+                              <div className={styles.trustVisual}>
+                                    <div className={styles.flowRow}>
+                                          <div className={styles.flowDot} />
+                                          <span className={styles.flowLabel}>
+                                                Job owner funds job
+                                          </span>
+                                          <span className={styles.flowAmount}>
+                                                reserved
+                                          </span>
+                                    </div>
+                                    <div className={styles.flowDivider} />
+                                    <div className={styles.flowRow}>
+                                          <div className={styles.flowDot} />
+                                          <span className={styles.flowLabel}>
+                                                Worker submits proof
+                                          </span>
+                                          <span className={styles.flowAmount}>
+                                                pending review
+                                          </span>
+                                    </div>
+                                    <div className={styles.flowDivider} />
+                                    <div className={styles.flowRow}>
+                                          <div
+                                                className={styles.flowDot}
+                                                style={{
+                                                      backgroundColor:
+                                                            tokens.colorPaletteGreenForeground1,
+                                                }}
+                                          />
+                                          <span className={styles.flowLabel}>
+                                                Work approved
+                                          </span>
+                                          <span className={styles.flowAmount}>
+                                                released
+                                          </span>
+                                    </div>
+                                    <div className={styles.flowDivider} />
+                                    <div className={styles.flowRow}>
+                                          <div
+                                                className={styles.flowDot}
+                                                style={{
+                                                      backgroundColor:
+                                                            tokens.colorPaletteGreenForeground1,
+                                                }}
+                                          />
+                                          <span className={styles.flowLabel}>
+                                                Worker wallet credited
+                                          </span>
+                                          <span className={styles.flowAmount}>
+                                                complete
+                                          </span>
+                                    </div>
+                              </div>
+                        </div>
+                  </div>
+            </section>
+      );
+};
+
+// ─── CTA band ───────────────────────────────────────────────────────────────
+
+const CtaBand: React.FC = () => {
+      const styles = useStyles();
+      const { isAuthenticated } = useAuth();
+
+      return (
+            <section className={styles.ctaSection}>
+                  <div className={styles.ctaInner}>
+                        <h2 className={styles.ctaH2}>Start earning today</h2>
+                        <p className={styles.ctaSub}>
+                              Join workers already getting paid through
+                              Workbit&apos;s escrow wallet.
+                        </p>
+                        <Button
+                              as={Link as never}
+                              href={
+                                    isAuthenticated
+                                          ? '/dashboard'
+                                          : '/auth/signup'
+                              }
+                              appearance="primary"
+                              size="large"
+                              icon={<FlashRegular />}
+                        >
+                              Create your account
+                        </Button>
+                  </div>
+            </section>
+      );
+};
+
+// ─── Footer ─────────────────────────────────────────────────────────────────
+
+const Footer: React.FC = () => {
+      const styles = useStyles();
+
+      return (
+            <footer className={styles.footer}>
+                  <div className={styles.footerInner}>
+                        <div className={styles.footerGrid}>
+                              <div>
+                                    <Logo />
+                                    <p className={styles.footerDesc}>
+                                          An escrow-backed task marketplace
+                                          built for Nigerian workers and the
+                                          businesses that hire them.
+                                    </p>
+                              </div>
+                              <div>
+                                    <h4 className={styles.footerColTitle}>
+                                          Platform
+                                    </h4>
+                                    <a
+                                          href="/marketplace"
+                                          className={styles.footerLink}
+                                    >
+                                          Marketplace
+                                    </a>
+                                    <a
+                                          href="/post-job"
+                                          className={styles.footerLink}
+                                    >
+                                          Post a job
+                                    </a>
+                                    <a
+                                          href="#how-it-works"
+                                          className={styles.footerLink}
+                                    >
+                                          How it works
+                                    </a>
+                              </div>
+                              <div>
+                                    <h4 className={styles.footerColTitle}>
+                                          Support
+                                    </h4>
+                                    <a href="#" className={styles.footerLink}>
+                                          Help center
+                                    </a>
+                                    <a href="#" className={styles.footerLink}>
+                                          Contact us
+                                    </a>
+                                    <a href="#" className={styles.footerLink}>
+                                          Terms of service
+                                    </a>
+                              </div>
+                        </div>
+                        <div className={styles.footerBottom}>
+                              <span>
+                                    © {new Date().getFullYear()} Workbit. All
+                                    rights reserved.
+                              </span>
+                              <div style={{ display: 'flex', gap: '20px' }}>
+                                    <PhoneRegular fontSize={18} />
+                                    <ShieldCheckmarkRegular fontSize={18} />
+                                    <ChartMultipleRegular fontSize={18} />
+                              </div>
+                        </div>
+                  </div>
+            </footer>
       );
 };
 
