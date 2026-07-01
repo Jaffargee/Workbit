@@ -17,8 +17,13 @@ import JobDir from './pages/Jobs/JobDir';
 import Jobs from './pages/Jobs';
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import Test from './pages/Test';
-import Privacypolicy from './pages/StaticPages/Privacypolicy';
-import TermsOfService from './pages/StaticPages/Termofservice';
+import Privacypolicy from './pages/Static/Privacypolicy';
+import TermsOfService from './pages/Static/Termofservice';
+// import PrivacyPolicy from './pages/Static/PrivacyPolicy';
+import HelpCenter from './pages/Static/Helpcenter';
+import ContactUs from './pages/Static/Contactus';
+import RefundPolicy from './pages/Static/Refundpolicy';
+import NotFound from './pages/Static/Notfound';
 
 const RenderLayout = ({ element }: { element: React.ReactNode }) => {
       return <Layout>{element}</Layout>
@@ -101,12 +106,16 @@ const App: React.FC = () => {
                                           <RenderLayout element={<Test />} />
                                     </ProtectedRoutes>
                               } />
-                              <Route path="/termsofservice" element={
-                                    <TermsOfService />
-                              } />
-                              <Route path="/privacy/policy" element={
-                                    <Privacypolicy />
-                              } />
+
+                              {/* ── Static / support pages ─────────────── */}
+                              <Route path="/terms" element={<TermsOfService />} />
+                              <Route path="/privacy" element={<Privacypolicy />} />
+                              <Route path="/help" element={<HelpCenter />} />
+                              <Route path="/contact" element={<ContactUs />} />
+                              <Route path="/refunds" element={<RefundPolicy />} />
+ 
+                              {/* ── 404 catch-all ──────────────────────── */}
+                              <Route path="*" element={<NotFound />} />
                         </Routes>
                   </FluentProvider>
             </AuthProvider>

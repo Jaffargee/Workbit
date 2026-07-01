@@ -1022,6 +1022,7 @@ const ActionButtonContainer: React.FC<{
                   { body: { transaction_id } }
             );
             if (error) throw new Error(error);
+            console.log(data);
             await fetchBalance()
             return data;
       };
